@@ -23,19 +23,21 @@ cd seo-ops && pip install -r checker/requirements.txt
 
 命令行、配置项、报告怎么读,agent 会从 `CLAUDE.md` 自己查,不用你记。
 
-更新:`git pull`。你的 `sites.yaml`、`checker/.env`、历史报告都在 `.gitignore` 里,不会被覆盖。
+报告落在 `.seo-ops/out/`。这个目录连同 `.env` 都在 `.gitignore` 里 —— 更新直接 `git pull`,
+你的花名册、API key、历史报告原地不动。
 
 ## 装到别的仓库去
 
 想让**别的仓库**的 agent 也能对着清单干活(审模板、查页面 doc),不用把整个仓库 clone 过去
-—— [skills/](skills/README.md) 下有两个纯知识 skill,复制走即可:
+—— [skills/](skills/README.md) 下有两个可单独安装的 skill,复制走即可:
 
 | skill | 给谁 |
 |---|---|
-| `skills/seo-ops` | 工程:对照 C 集审模板、meta、结构化数据、路由与渲染策略 |
+| `skills/seo-ops` | 工程:对照 C 集审模板、meta、结构化数据、路由与渲染策略;也带 checker,能就地跑 |
 | `skills/seo-content` | content / 设计:对照 T 集查页面 doc 的 SEO 供给项 |
 
-它们只含知识,不含脚本与配置。要跑机器验收出报告,还是回到本仓库。
+装进去之后,报告和配置落在**那个项目**的 `.seo-ops/` 下,不在 skill 目录里 ——
+skill 更新是整包覆盖,状态放里面必丢。
 
 ---
 

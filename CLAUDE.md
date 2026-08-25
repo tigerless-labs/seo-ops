@@ -33,15 +33,26 @@ JSON-LD、OG、hreflang、CWV、AI 爬虫放行等),以及定 content 团队该�
 | [checker/run.py](checker/run.py) | 跑 C 集机器项,出报告 | 验收时 |
 | [redlines.md](redlines.md) | **R 集**:R1–R8 禁止事项(人闸,不是机器检查) | 动内容策略、动链接、动结构化数据之前 |
 | [ai-crawlers.yaml](ai-crawlers.yaml) | C1 检查的 AI 爬虫 UA 清单 | 要增删被检查的 AI 爬虫时 |
-| [skills/](skills/README.md) | 两个可单独装到别的仓库去的知识 skill(`seo-ops` / `seo-content`) | 要让别的仓库的 agent 也能对着清单干活 |
+| [skills/](skills/README.md) | 两个可单独装到别的仓库去的 skill(`seo-ops` 带 checker,`seo-content` 只有清单) | 要让别的仓库的 agent 也能对着清单干活、或就地跑检查 |
 
 `<N>` 是条目编号,与清单里的 ID 一一对应:C12 的详情就是 `checklist/references/C12.md`。
 编号有断档是正常的(如无 T11)——退役的号不回收,详见「改清单的时候」。
 
 ## 跑 checker
 
-所有命令都在**本仓库根目录**下跑 —— `run.py` 靠相对路径找 `checklist/checklist.md`
-与 `ai-crawlers.yaml`,`sites.yaml` 与 `checker/out/` 也都落在这里。
+**脚本住包内,状态住项目侧。** `run.py` 靠相对路径找 `checklist/checklist.md` 与
+`ai-crawlers.yaml`(所以要在仓库根跑),但 `sites.yaml`、`.env`、报告全部落在
+**state-dir** = `${CLAUDE_PROJECT_DIR:-cwd}/.seo-ops/`:
+
+```
+<state-dir>/
+├── sites.yaml   # 多站花名册;单站用 --target,不需要本文件
+├── .env         # CRUX_API_KEY / INDEXNOW_KEYS;已 export 的环境变量优先
+└── out/         # report-<site>-<date>.md 与 checks.db
+```
+
+改位置用 `--state-dir <path>` 或 `$SEO_OPS_DIR`。**不要往包内写任何东西** —— 这份 checker
+会被 `skills/sync.py` 复制进 skill,而 skill 更新是整包覆盖,写进去的必丢。
 
 **一个「站」= 一个 origin**(scheme + host[:port],不带 path/query)。子域名算独立的站
 (`blog.` / `docs.` 各算一个);裸域与 www 不算两个 —— 它们该归一到同一个 canonical host,
@@ -65,30 +76,35 @@ python3 checker/run.py --target http://localhost:3000    # 本地部署,自动�
 不想每次手敲 `--target`,也想让每个站各带自己的渲染策略与必测页。这时才需要 `sites.yaml`:
 
 ```bash
-cp sites.example.yaml sites.yaml     # 照抄改成自己的站,一个站一条记录
+mkdir -p .seo-ops && cp sites.example.yaml .seo-ops/sites.yaml   # 照抄改,一个站一条记录
 python3 checker/run.py               # 跑花名册里全部站
 python3 checker/run.py --site <id>   # 只跑其中一个
 ```
+
+找不到花名册时脚本会直接退出并把该建在哪、照谁抄打出来,不会静默跑空。
 
 每条记录填:`id`(报告文件名与 `checks` 表的 site 列用它)、`production`(origin,必填)、
 `rendering`(ssr/ssg/isr,C15 按此分支)、`sitemap`(默认 `<production>/sitemap.xml`)、
 `samples`(sitemap 之外额外加抓的必测页,标 `ymyl: true` 触发 C21 人审)。
 字段说明见 [sites.example.yaml](sites.example.yaml) 的注释。
 
-`sites.yaml` 在 `.gitignore` 里 —— 它是各人各机器的配置,只有 example 模板进版本库。
-`checker/.env` 与 `checker/out/` 同理。所以 `git pull` 更新本仓库时,这三样原地不动,
-不会被覆盖也不会被提交。
+`.seo-ops/` 与 `.env` 都在 `.gitignore` 里 —— 实例状态不进版本库,只有
+`sites.example.yaml` 模板进。所以 `git pull` 更新时它们原地不动,也不会被误提交。
+**装进别的项目时记得把 `.seo-ops/` 加进那个项目的 `.gitignore`。**
 
 ### 通用参数
 
-临时覆盖:`--page-sample N` `--sitemap-sample N` `--max-pages N` `--sleep S`。
+临时覆盖:`--page-sample N` `--sitemap-sample N` `--max-pages N` `--sleep S` `--workers N`。
+状态位置:`--state-dir <path>`、`--out <path>`。
+
+`--verify-only`:只跑漂移守卫(清单 vs 脚本),不联网,有漂移以 1 退出 —— CI 用的入口。
 
 耗时:默认单线程 1 秒间隔,约 `2 × sitemap 条目数` 个请求。271 页的站约 7 分钟;
 想快用 `--page-sample 100` 抽样——结构问题是模板级的,抽样和全量看到的是同一批。
 
 ## 读报告
 
-每次跑落两份产出到 `checker/out/`:
+每次跑落两份产出到 `<state-dir>/out/`:
 
 | 产出 | 给谁 | 是什么 |
 |---|---|---|
@@ -131,8 +147,10 @@ python3 checker/run.py --site <id>   # 只跑其中一个
 | `BODY_HIDE_PATTERNS` | C14 第三方脚本黑名单(新工具在此追加) |
 | `ai-crawlers.yaml` | C1 检查的 AI 爬虫 UA 清单 |
 
-**机密不进 config.py**:`CRUX_API_KEY`(C4)与 `INDEXNOW_KEYS`(C5)住 `checker/.env`,
+**机密不进 config.py**:`CRUX_API_KEY`(C4)与 `INDEXNOW_KEYS`(C5)住 `<state-dir>/.env`,
 模板见 `checker/.env.example`。不填就相应条目记 N.A.,不判红。
+已 export 的环境变量优先于文件 —— CI 注入 key 不会被谁的本地 .env 盖掉。
+包内 `checker/.env` 仍能读(旧布局兼容),但真从它取到值时会打一行告警提醒你搬走。
 
 ## 改清单的时候
 
@@ -142,5 +160,7 @@ python3 checker/run.py --site <id>   # 只跑其中一个
 **加条目的顺序:先改 checklist.md,再改 run.py 的 `CHECKS` 和判定逻辑。**
 编号是永久 ID,只顺延、不回收、不重排。
 
-**改完正本记得同步 skill 副本**:`python3 skills/sync.py`(校验用 `--check`)。
-`skills/*/checklist/` 与 `skills/*/content/` 是生成物,直接改会被下次同步覆盖。
+**改完正本记得同步 skill 副本**:`python3 skills/sync.py`(校验用 `--check`,CI 会跑)。
+skill 里的 `checklist/`、`content/`、`checker/` 及几个根文件都是生成物,直接改会被覆盖。
+新增 skill 要在 `skills/sync.py` 的 `PAYLOAD` 里登记该带哪些正本 —— 按**运行时真正会
+打开哪些文件**列,不是按「感觉哪些是文档」列(漏过 `ai-crawlers.yaml`,C1 直接崩)。

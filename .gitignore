@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
+.env
 checker/.env
 checker/out/
 sites.yaml
+.seo-ops/
 .claude/autoharness/

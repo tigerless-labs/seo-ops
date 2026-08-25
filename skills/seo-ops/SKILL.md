@@ -1,6 +1,7 @@
 ---
 name: seo-ops
-description: SEO 基础工程的结构检查清单(C 集,26 条)。当需要审查或验收一个网站/页面的 SEO/GEO 结构合规——robots、sitemap、canonical、归一 301、JSON-LD、OG、hreflang、CWV、AI 爬虫放行、渲染策略——或要判断某个前端改动会不会影响收录与被引用时使用。也用于回答「这条检查到底要什么」「为什么要有它」。
+description: SEO 基础工程的结构检查清单(C 集,26 条)与 checker 脚本。当需要审查或验收一个网站/页面的 SEO/GEO 结构合规——robots、sitemap、canonical、归一 301、JSON-LD、OG、hreflang、CWV、AI 爬虫放行、渲染策略——要跑机器检查出一份报告,或要判断某个前端改动会不会影响收录与被引用时使用。也用于回答「这条检查到底要什么」「为什么要有它」。
+allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/checker/run.py *)
 ---
 
 # seo-ops · SEO 基础工程结构检查
@@ -12,12 +13,51 @@ description: SEO 基础工程的结构检查清单(C 集,26 条)。当需要审�
 
 **判定是二元的结构问题**(该有的结构在不在、对不对),不是效果问题(排名高不高)。
 
-**不在这里的**:跑机器验收的 checker 脚本。它需要联网抓取 + 站点配置,住在
-[seo-ops 仓库](https://github.com/tigerless-labs/seo-ops)。要一份可提交的验收报告,
-clone 那个仓库跑 `checker/run.py`;本 skill 只做人/agent 侧的对照审查。
+两种用法:**对照清单审代码**(不联网),或**跑 checker 出报告**(联网抓目标站)。
 
 **不查**:样式、交互、体验、代码质量;内容真伪与质量;排名与流量。
 **清单全绿 ≠ 全部合规。**
+
+## 跑 checker
+
+```bash
+pip install -r ${CLAUDE_SKILL_DIR}/checker/requirements.txt      # 首次;只要 requests 和 PyYAML
+python3 ${CLAUDE_SKILL_DIR}/checker/run.py --target https://example.com
+```
+
+**脚本住 skill 里,状态住项目里** —— 报告、`sites.yaml`、API key 全部落在
+`${CLAUDE_PROJECT_DIR}/.seo-ops/`,与 skill 装在哪无关。**不要往 skill 目录里写任何东西**,
+skill 更新是整包覆盖,写进去的必丢。要换位置用 `--state-dir <path>` 或 `$SEO_OPS_DIR`。
+
+```
+${CLAUDE_PROJECT_DIR}/.seo-ops/
+├── sites.yaml            # 多站花名册;单站用 --target,不需要本文件
+├── .env                  # CRUX_API_KEY / INDEXNOW_KEYS;已 export 的环境变量优先
+└── out/
+    ├── report-<site>-<date>.md    # 人读,与 checklist 一一对应,每次都是同样 26 行
+    └── checks.db                  # 机读,SQLite,跨次累积可做 diff
+```
+
+`checks(site, url, rule_id, status, evidence, checked_at)`,主键 `(site, url, rule_id)`。
+
+**建议把 `.seo-ops/` 加进该项目的 `.gitignore`** —— 报告与花名册是本地状态,不该进对方版本库。
+
+### 常用参数
+
+| | |
+|---|---|
+| `--target <origin>` | 单站,不需要配置文件。**必须是 origin**(scheme + host[:port]),带 path/query 会报错退出 |
+| `--site <id>` / 不传 | 按 `<state-dir>/sites.yaml` 跑其中一个 / 全部 |
+| `--page-sample N` | 页级检查抽样上限;`0` = 全量。271 页的站全量约 7 分钟,想快用 `--page-sample 100` |
+| `--sleep S` / `--workers N` | 节流。整体 QPS ≈ workers / sleep,默认 1 / 1 |
+| `--state-dir <path>` | 覆盖状态目录 |
+
+**先看报告顶部的告警行**,有就说明这次结论不完整:🚦 被目标限流(429/503)= 我们打太快,
+受影响的判定已记 N.A. 不记 fail,**假红比跑得慢危险** —— `--workers` 减半或调大 `--sleep`
+重跑才有完整结论;⚠️ 样本抓取失败 = 真抓不到,这些页不进分母。
+
+**公网 staging 域不支持** —— 会被当生产域测,归一检查(C3)必然误红。
+上线前要测:本地部署跑 `http://localhost:<port>`,或等上线后跑生产域。
 
 ## 怎么用
 
@@ -50,5 +90,6 @@ ymyl 判定、作者资质)。那部分单列为 **T 集**,住 [content/content-
 
 ---
 
-`checklist/` 与 `content/` 是仓库正本的副本,由 `skills/sync.py` 生成。**不要在这里改**,
-要改去 [seo-ops 仓库](https://github.com/tigerless-labs/seo-ops) 改正本。
+`checklist/`、`content/`、`checker/` 都是仓库正本的副本,由 `skills/sync.py` 生成。
+**不要在这里改**,要改去 [seo-ops 仓库](https://github.com/tigerless-labs/seo-ops) 改正本
+—— 改在这里的东西下次更新 skill 就没了。

@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"          # 文档承诺的下限,CI 就按下限跑
+      - run: pip install -r checker/requirements.txt
+
+      # ── 三道守卫,都不联网 ───────────────────────────────
+      - name: 语法
+        run: python3 -m compileall -q checker skills
+
+      - name: 清单与脚本对齐(C 集条目/优先级/所属节)
+        run: python3 checker/run.py --verify-only
+
+      - name: skill 副本与正本一致
+        run: python3 skills/sync.py --check
+
+      # ── 端到端:自建静态站,不打外网 ─────────────────────
+      # 不拿 example.com 之类的真站做冒烟 —— 外站抖一下 CI 就红,而这个仓库自己的
+      # 立场就是「假红比跑得慢危险」。本地起站既确定又快。
+      - name: 冒烟(本地静态站,走本地模式)
+        run: |
+          mkdir -p /tmp/site
+          cat > /tmp/site/index.html <<'HTML'
+          <!doctype html><html lang="en"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>ci smoke</title><meta name="description" content="ci smoke page">
+          <link rel="canonical" href="http://127.0.0.1:8000/">
+          </head><body><h1>ci smoke</h1></body></html>
+          HTML
+          printf 'User-agent: *\nAllow: /\n' > /tmp/site/robots.txt
+          python3 -m http.server 8000 --directory /tmp/site &>/dev/null &
+          for i in $(seq 20); do curl -sf http://127.0.0.1:8000/ >/dev/null && break; sleep 0.5; done
+
+          python3 checker/run.py --target http://127.0.0.1:8000 \
+            --page-sample 2 --max-pages 2 --sleep 0 | tee /tmp/out.txt
+
+          # 守卫的告警只进 stdout,退出码不体现 —— CI 必须自己盯,否则漂移会被绿灯放过。
+          grep -q "⚠️  漂移" /tmp/out.txt && { echo "::error::检测到漂移"; exit 1; }
+          test -f "$GITHUB_WORKSPACE/.seo-ops/out/checks.db" || {
+            echo "::error::报告未落在 <state-dir>/out"; exit 1; }
+          echo "✅ 冒烟通过,产出落在 .seo-ops/out/"
+
+      - name: 状态目录没漏进版本库
+        run: |
+          # .seo-ops/ 与 .env 必须被忽略 —— 报告和 key 进 git 是这个仓库最不该犯的错。
+          git status --porcelain --ignored=no | tee /tmp/dirty.txt
+          test ! -s /tmp/dirty.txt || { echo "::error::跑完 checker 后工作区不干净"; exit 1; }
