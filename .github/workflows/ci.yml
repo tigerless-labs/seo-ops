@@ -66,29 +66,35 @@ jobs:
       # 立场就是「假红比跑得慢危险」。本地起站既确定又快。
       - name: 冒烟(本地静态站,走本地模式)
         run: |
-          mkdir -p site out
-          cat > site/index.html <<'HTML'
+          # 所有临时产物都落 $RUNNER_TEMP —— 工作区一个字节都不碰,
+          # 下一步的「干净」断言才是真断言,而不是「造了再删」。
+          SITE="$RUNNER_TEMP/site"; OUT="$RUNNER_TEMP/out"; LOG="$RUNNER_TEMP/run.txt"
+          mkdir -p "$SITE"
+          cat > "$SITE/index.html" <<'HTML'
           <!doctype html><html lang="en"><head><meta charset="utf-8">
           <meta name="viewport" content="width=device-width,initial-scale=1">
           <title>ci smoke</title><meta name="description" content="ci smoke page">
           <link rel="canonical" href="http://127.0.0.1:8000/">
           </head><body><h1>ci smoke</h1></body></html>
           HTML
-          printf 'User-agent: *\nAllow: /\n' > site/robots.txt
-          python -m http.server 8000 --directory site &>/dev/null &
+          printf 'User-agent: *\nAllow: /\n' > "$SITE/robots.txt"
+          python -m http.server 8000 --directory "$SITE" &>/dev/null &
           for i in $(seq 20); do curl -sf http://127.0.0.1:8000/ >/dev/null && break; sleep 0.5; done
 
           # 显式 --state-dir:CI 要的是可断言的落点,不是用户默认位置
           python checker/run.py --target http://127.0.0.1:8000 \
-            --state-dir "$PWD/out" --page-sample 2 --max-pages 2 --sleep 0 | tee run.txt
+            --state-dir "$OUT" --page-sample 2 --max-pages 2 --sleep 0 | tee "$LOG"
 
-          grep -q "⚠️  漂移" run.txt && { echo "::error::检测到漂移"; exit 1; }
-          test -f out/out/checks.db || { echo "::error::产出没落在 --state-dir 下"; exit 1; }
+          grep -q "⚠️  漂移" "$LOG" && { echo "::error::检测到漂移"; exit 1; }
+          test -f "$OUT/out/checks.db" || { echo "::error::产出没落在 --state-dir 下"; exit 1; }
           echo "✅ 冒烟通过"
 
       - name: 工作区没被弄脏(报告与 key 绝不能进版本库)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          rm -rf site out run.txt
-          git status --porcelain | tee dirty.txt
-          test ! -s dirty.txt || { echo "::error::跑完 checker 后工作区不干净"; exit 1; }
+          # 不写中间文件 —— 上一版用 `git status | tee dirty.txt`,tee 造出的
+          # dirty.txt 被同一条 git status 看见,守卫拿自己当污染源,必红。
+          dirty=$(git status --porcelain)
+          test -z "$dirty" || {
+            echo "$dirty"; echo "::error::跑完 checker 后工作区不干净"; exit 1; }
+          echo "✅ 工作区干净"
