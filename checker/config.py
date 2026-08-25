@@ -3,7 +3,7 @@
 原则:判定逻辑住 run.py,判定参数住本文件;改阈值/清单只动这里,人审后合并。
 **机密不进本文件** — API key 一类住同目录 `.env`(已 gitignore),模板见 `.env.example`。
 C4(CWV)无数据时 checker 输出 no-data(N.A.),不判红——阈值本身是 Google 官方常量。
-C 编号对应 docs/checklist/checklist.md(2026-08-24 重排后)。
+C 编号对应 checklist/checklist.md(2026-08-24 重排后)。
 """
 import os
 from pathlib import Path

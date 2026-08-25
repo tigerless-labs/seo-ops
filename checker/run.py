@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""checker — 手动运行的检查脚本。用法与判定说明见同目录 README.md。
+"""checker — 手动运行的检查脚本。用法与判定说明见包根 SKILL.md。
 
-条目定义住 docs/checklist/checklist.md(**唯一真相**),本脚本实现其机器项
+条目定义住 checklist/checklist.md(**唯一真相**),本脚本实现其机器项
 C1–C20、C23–C26;C21/C22 为人审项,报表列出不判。
 两份靠 verify_checklist_sync() 每次启动对齐 —— 检查逻辑无法自动生成(每条手写),
 但「有哪些条目、什么优先级、在哪一节」必须对得上,对不上就在 stdout 喊。
 
-  python3 tools/check/run.py                       # config.TARGET 为空 → 按 sites.yaml 全部站点跑
-  python3 tools/check/run.py --site tigerless-com  # 只跑 sites.yaml 里的一个站
-  python3 tools/check/run.py --target http://localhost:3000   # 单站覆盖(本地模式自动判定)
+  python3 checker/run.py                       # config.TARGET 为空 → 按 sites.yaml 全部站点跑
+  python3 checker/run.py --site tigerless-com  # 只跑 sites.yaml 里的一个站
+  python3 checker/run.py --target http://localhost:3000   # 单站覆盖(本地模式自动判定)
 
 输出:
-  tools/check/out/report-<site>-<date>.md  — 与 checklist 同构的表单(三节;结果 + 证据)
-  tools/check/out/checks.db                — checks 快照(SQLite,schema 见 README)
+  checker/out/report-<site>-<date>.md  — 与 checklist 同构的表单(三节;结果 + 证据)
+  checker/out/checks.db                    — checks 快照(SQLite,schema 见 SKILL.md)
 
 三条不变量:
   1. **三态判定** pass / fail / N.A.(reason) —— 「没测」和「没事」不许混成一个绿。
@@ -39,7 +39,7 @@ import config as CFG
 def _resolve_paths():
     """定位三份数据文件,兼容两种布局 —— 这份脚本同时以 repo 内工具和独立 skill 两种形态存在,
     路径写死就会分叉成两个副本,分叉了就必然有一份先烂掉。
-      repo :  tools/check/run.py  +  docs/checklist/checklist.md
+      repo :  checker/run.py  +  checklist/checklist.md
       skill:  checker/run.py      +  checklist/checklist.md
     """
     here = Path(__file__).resolve()
@@ -980,7 +980,7 @@ CHECKS = [
 ICON = {PASS: "✅ pass", FAIL: "🔴 fail", NA: "⚪ N.A.", HUMAN: "👤 人审"}
 
 def verify_checklist_sync():
-    """漂移守卫:CHECKS(报告骨架)必须与 docs/checklist/checklist.md 的条目一致。
+    """漂移守卫:CHECKS(报告骨架)必须与 checklist/checklist.md 的条目一致。
     检查逻辑无法自动生成(每条手写),但「有哪些条目、什么优先级、在哪一节」必须对得上;
     对不上就喊出来,不让报告默默说谎。"""
     md = CHECKLIST_MD
@@ -1015,7 +1015,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
              f"({'全量' if args.page_sample == 0 else f'抽样上限 {args.page_sample}'})"
              f" · sitemap 抽查 {args.sitemap_sample} · 内链爬取上限 {args.max_pages}"
              f" · 并发 {args.workers} × 间隔 {args.sleep}s",
-             f"- 判定参数:tools/check/config.py;条目定义:docs/checklist/checklist.md", ""]
+             f"- 判定参数:checker/config.py;条目定义:checklist/checklist.md", ""]
     if getattr(R, "throttled_total", 0):
         lines += [f"- 🚦 **被目标限流 {R.throttled_total} 次(429/503),其中页面样本 "
                   f"{getattr(R, 'thr_pages', 0)} 页**——受影响的判定已记 N.A. 而非 fail"
