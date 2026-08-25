@@ -552,8 +552,17 @@ def check_site(site, f, args):
         if t: titles.setdefault(t, []).append(p["url"])
         if d: descs.setdefault(d, []).append(p["url"])
         st.append((p["url"], FAIL if probs else PASS, ";".join(probs)))
-    dup = [f"title 重复×{len(v)}" for v in titles.values() if len(v) > 1] + \
-          [f"desc 重复×{len(v)}" for v in descs.values() if len(v) > 1]
+    def dup_ev(kind, groups):
+        """重复项证据。旧版只写「title 重复×3」—— 不说重复的是哪一句,读的人无从下手,
+        而且一组一条全拼进去,149 页的站能拼出三千多字符,把报告表格撑爆。
+        改成:给出重复的文本本身 + 一个例子 URL,并按全文统一的 [:N] + …共 N 截断。"""
+        items = sorted(((txt, urls) for txt, urls in groups.items() if len(urls) > 1),
+                       key=lambda x: -len(x[1]))
+        out = [f'{kind} 重复×{len(urls)}「{txt[:40]}{"…" if len(txt) > 40 else ""}」如 {urls[0]}'
+               for txt, urls in items[:3]]
+        return out + ([f"…共 {len(items)} 组 {kind} 重复"] if len(items) > 3 else [])
+
+    dup = dup_ev("title", titles) + dup_ev("desc", descs)
     agg_pages(R, "C11", st)
     if dup:
         prev = R.rows["C11"]
@@ -751,7 +760,7 @@ def check_site(site, f, args):
     agg_pages(R, "C25", st)
 
     # C21/C22 人审
-    R.set("C21", HUMAN, "上线前对照 C21 的 YMYL 信任块清单过检(见 checklist/references/C21.md)(触发:ymyl=true)")
+    R.set("C21", HUMAN, "上线前对照 C21 的 YMYL 信任块清单过检(见 references/checklist/references/C21.md)(触发:ymyl=true)")
     R.set("C22", HUMAN, "人工核对语言对两侧互指 + x-default(触发:站点有多语言配置)")
 
     R.throttled_total = f.throttled
@@ -977,7 +986,7 @@ CHECKS = [
         ("C10", "P0", "缓存 HTML 为无个性化公共版"),
         ("C23", "P0", "收录页无 noindex(meta robots/googlebot + X-Robots-Tag)"),
         ("C11", "P1", "title 唯一 ≤60;description 唯一 ≤150"),
-        ("C12", "P1", "JSON-LD:块/基础组/出现类型的必填参数/无不采纳类型(声明↔可见一致 = 人审)"),
+        ("C12", "P1", "JSON-LD:块/基础组/出现类型的必填参数/无不采纳类型(声明与可见一致 = 人审)"),
         ("C13", "P1", "无 soft 404 / 空壳 200(retired 走 301/410)"),
         ("C14", "P1", "无 body-hide 型第三方脚本"),
         ("C16", "P1", "snippet 控制:max-snippet:-1, max-image-preview:large"),
@@ -1076,6 +1085,10 @@ def render_report(site, R, mode, ok_n, total_n, args):
             elif status == PASS: counts["pass"] += 1
             elif status == NA: counts["na"] += 1
             ev = ev.replace("|", "\\|")
+            # 证据兜底截断:C11 曾在 149 页的站上拼出 3352 字符,把表格撑到渲染重叠。
+            # 完整证据仍进 checks.db —— 报告给人读,库给机器读,截断只发生在前者。
+            if len(ev) > CFG.EVIDENCE_MAX_CHARS:
+                ev = ev[:CFG.EVIDENCE_MAX_CHARS].rstrip() + f"…(已截断,完整见 checks.db 的 {cid} 行)"
             lines.append(f"| {cid} | {prio} | {name} | {ICON[status]} | {ev} |")
         lines.append("")
     lines.insert(5, f"**结论:🔴 {counts['fail']}(其中 P0 {counts['fail_p0']})· "

@@ -210,6 +210,9 @@ SSR_MIN_TEXT_CHARS = 500      # v1 启发式:禁 JS 抓取正文低于此值 = �
 # ── C10 缓存公共版 ────────────────────────────────────
 CACHE_DIFF_SAMPLE_SIZE = 10   # 同 URL 双抓 diff 的抽查页数
 
+# ── 报告渲染 ─────────────────────────────────────────
+EVIDENCE_MAX_CHARS = 300      # 单格证据上限;超出截断并指向 checks.db(库里存全量)
+
 # ── C11 title / description ──────────────────────────
 TITLE_MAX_CHARS = 60
 DESC_MAX_CHARS = 150
@@ -320,6 +323,7 @@ TUNABLE = {
     "OG_IMAGE_WIDTH":                      "C19:og:image 建议宽",
     "OG_IMAGE_HEIGHT":                     "C19:og:image 建议高",
     "MAX_REDIRECT_HOPS":                   "C3:归一跳数上限(一跳到位才不掉权重)",
+    "EVIDENCE_MAX_CHARS":                  "报告里单格证据的字符上限;完整证据始终进 checks.db",
 }
 
 

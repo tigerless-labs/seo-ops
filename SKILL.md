@@ -1,25 +1,73 @@
 ---
 name: seo-ops
-description: SEO 基础工程的结构检查清单与 checker 脚本。当需要审查或验收一个网站/页面的 SEO/GEO 结构合规(robots、sitemap、canonical、归一 301、JSON-LD、OG、hreflang、CWV、AI 爬虫放行、渲染策略),要跑机器检查出一份报告,要判断某个前端改动会不会影响收录与被引用,或要给 content / 设计团队开一份「这份页面 doc 还缺哪些 SEO 供给项」的清单时使用。也用于回答「这条检查到底要什么」「为什么要有它」。
+description: SEO 基础工程的结构检查清单与 checker 脚本。当需要审查或验收一个网站/页面的 SEO/GEO 结构合规(robots、sitemap、canonical、归一 301、JSON-LD、OG、hreflang、CWV、AI 爬虫放行、渲染策略),要跑机器检查出一份报告,或要判断某个前端改动会不会影响收录与被引用时使用。也用于回答「这条检查到底要什么」「为什么要有它」。
 compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the target site
 ---
 
 # seo-ops · SEO 基础工程
 
-检查或验收一个网站的 SEO/GEO 结构合规,以及定 content 团队该为 SEO 提供哪些信息。
-跑 checker 出报告、查某条检查的详细要求、开 content 供给清单,都在这里。
+对照 **C 集**(26 条结构检查)审一个网站的模板与产出,或跑 checker 出一份验收报告。
 
-**两类用法,受众不同**:
+## 怎么干活
 
-- **工程**:对照 **C 集**(26 条结构检查)审模板与产出,或跑 checker 出报告。
-- **content / 设计**:只过 **T 集**(供给清单)—— **不跑脚本、不读 C 集**,
-  那 26 条是工程侧的活,由 checker 自动验。见「给 content 团队开交付单」。
+触发本 skill 时,**先花两三句让用户知道他拿到的是什么**,再动手:
 
-**首次跑 checker**:`pip install -r scripts/requirements.txt`(只要 requests 和 PyYAML)。
-报 `externally-managed-environment`(PEP 668,Debian/Ubuntu 常见)时改用系统包
-`apt install python3-requests python3-yaml`,或建个 venv —— **不要加
-`--break-system-packages`**,那是拿系统 Python 冒险换一个两行的依赖。
-很多机器上这两个包本来就有,先 `python3 -c "import requests, yaml"` 试一下。
+> 这里有 26 条 SEO/GEO 结构检查(C 集),查的是爬虫能不能抓到、读懂、收录、引用一个网站
+> —— 二元的结构问题,不是排名好不好。可以**对着线上站跑 checker 出一份报告**,
+> 也可以**对着代码/模板逐条审**。你要查哪个?
+
+**确认目的再开工**,因为「查线上站」和「查代码」是两件事,猜错就白跑一遍:
+
+| 用户给了 | 走哪条 |
+|---|---|
+| 域名 / URL | 跑 checker 出报告 |
+| 代码、模板、PR、页面文件 | 不跑脚本,对照 C 集逐条审机器可读产出面 |
+
+目的确认之后就**不要再反复请示**,按下面的流程走完。
+
+两条路径都**以 [references/checklist/checklist.md](references/checklist/checklist.md) 为准**,
+不凭印象判;某条不确定就读 `references/checklist/references/C<N>.md`。
+引用条目写编号(`C12`),编号是永久 ID,不要改号或重排。
+
+### 跑 checker 的流程
+
+**确认目标是 origin → 一次问完必要配置 → 直接跑。** 先跑起来,别为可选项停下:
+
+| | 什么时候才需要 | 没有的后果 |
+|---|---|---|
+| 目标 origin | 总是 | 跑不了 |
+| `sites.yaml` | 多站,或要声明渲染策略 / 标 YMYL 页 | 单站用 `--target`;C15 记 `need-declaration`、C21 无人审清单 |
+| `.env` 里的 CrUX key | **只在用户要「完整判定」时** | **非必需**,C4 记 `need-crux-key`,其余 25 条照跑 |
+| `config.yaml` | 只在要改阈值时 | 无,全走默认 |
+
+271 页的站约 7 分钟,跑之前告诉用户大概要等多久。
+
+### 报告出来之后:解释是你的活
+
+**报告只给结论与证据,不解释。** 脚本是纯确定性的、零 LLM —— 那是它能当验收依据、
+能拿去跟施工方争议的全部理由,所以讲解不写进报告,由你在报告之外补上:
+
+1. **按 P0 → P1 → P2 讲,不按红项数量。** P0 是存在层(爬不到、收不进),
+   一条 P0 比五条 P2 重要。
+2. **每条红项两句**:这为什么是问题(后果落到收录 / 被引用上),然后怎么改。
+3. **修法去读 `references/checklist/references/C<N>.md` 的「## 实现指导」,不要自己编。**
+   26 篇都有这一节,里面是判定标准、常见错法与权威依据。讲完把该文件路径给出来,
+   让用户能自己往下翻。
+4. **N.A. 必须点出来**,并说清是缺什么导致的(缺 key / 缺声明 / 被限流)。
+   「没测」不是「没事」,而用户会把看着全绿的报告读成「没问题」。
+5. **人审项(C21 / C22)列出来提醒人过,不要替人下结论。**
+6. 报告顶部若有 🚦 限流或 ⚠️ 抓取失败告警,**先说这次结论不完整**,再讲发现。
+
+### 环境
+
+```bash
+python3 -c "import requests, yaml"     # 只要这两个依赖
+ls -a ~/.config/seo-ops/               # .env 是隐藏文件,不带 -a 看着像空目录
+```
+
+装不上且报 `externally-managed-environment`(PEP 668,Debian/Ubuntu 常见)时用系统包
+`apt install python3-requests python3-yaml` 或建 venv —— **不要加 `--break-system-packages`**,
+那是拿系统 Python 冒险换一个两行的依赖。
 
 ## 覆盖范围
 
@@ -52,9 +100,9 @@ skill 本体(只读,更新时整包覆盖 —— **一个字节都别往里写**
     ├── checklist/
     │   ├── checklist.md         C 集:26 条结构检查,分站级/每收录页/条件项
     │   └── references/C<N>.md   每条 C 的详细说明:判定标准、常见错法、权威依据
-    ├── content/
-    │   ├── content-checklist.md T 集:SEO 所需信息的供给清单,每条标注下游 C 项
-    │   └── references/T<N>.md   每条 T 的详细说明:要交什么、什么样算合格
+    ├── content/                 T 集:C 项红了反查「是谁欠供」用,不在本 skill 的职责内
+    │   ├── content-checklist.md
+    │   └── references/T<N>.md
     ├── ai-crawlers.yaml         C1 检查的 AI 爬虫 UA 清单(run.py 运行期读取)
     ├── sites.example.yaml       花名册模板,字段说明就在它的注释里
     ├── config.example.yaml      可调参数模板(**生成物**,见「配置」一节)
@@ -169,40 +217,6 @@ python3 scripts/run.py --site <id>   # 只跑其中一个
 
 优先级:**P0 = 存在层/事故层**(爬不到、收不进);**P1 = 表现层**(排名与引用打折);**P2 = 优化项**。
 
-## 给 content 团队开交付单
-
-拿一份**页面 doc / 内容设计文档**,对照 **T 集** 逐条查:SEO 需要的信息交齐了没有、
-交得合不合格。缺什么就指出来,并把「这条要怎么交」一起给出,不要只说「缺 T5」。
-
-**content 只需要过 T 集。** 不跑脚本、不读 C 集 —— T 条目里标的「下游 C 项」是给
-排查用的线索(C 红了能反查到是谁欠供),不是要 content 逐条过。
-
-T 集分三节:**站级**(T1–T2,一次性 + 低频维护)、**每页必交**(T3–T10、T14,
-页面 doc 顶部的「SEO 头部块」)、**条件项**(T12–T13,按 flag 或页面内容触发)。
-索引在 [references/content/content-checklist.md](references/content/content-checklist.md),每条详情住
-`references/content/references/T<N>.md`。
-
-**定位 = 补集**:常规页面 doc、layout 设计、URL 照旧交付,不重复审;只管常规 doc
-通常不覆盖的 SEO 供给项。三态照实记 —— 条件项不触发记 N.A. 并写明为什么,别记 pass。
-
-最常出错的几条:
-
-- **T4 `ymyl` 判定是条件项的唯一开关** —— 影响健康/财务/法律/人身安全即 `true`,
-  **拿不准标 `true`**。漏标 = 下游 C21 整条静默失效,没有任何地方会报警。
-- **T14 图片 alt** —— 内容图逐张一句描述(讲图里是什么,**不堆关键词**);
-  纯装饰图标注「装饰」,前端落成 `alt=""`。
-- **T5 title / description** —— title ≤60、desc ≤150,**每页唯一不复制**。
-- **T8 双语** —— en/zh 同交不留单边;只有一种语言的**显式声明** en only / zh only,
-  别留空(留空和「还没写」分不开)。
-- **T12 审核必须真实发生** —— ymyl 内容的审核人与日期不是走过场字段,假署名踩 R2。
-
-**有些 SEO 项不该找 content 要**:sitemap 分片、canonical header、viewport、
-`og:type` 取值等,判定输入全在 frontend 侧。content-checklist 文末列了这些
-「判过但不加 T 的」及理由 —— **被要求补这类东西时指出来**,别照单全收。
-
-判据统一:一条 C 要不要生出 T,看它的判定输入里**有没有只有人能写出来的东西**。
-alt 文案有(只有看过图的人写得出)→ T14;`og:type` 没有(模板看正文就能定)→ 不加。
-
 ## 配置
 
 **调参数不要改 `scripts/config.py`** —— 那是 skill 本体,更新时整包覆盖,改了就没。
@@ -237,26 +251,3 @@ mkdir -p ~/.config/seo-ops && cp references/config.example.yaml ~/.config/seo-op
 - **结构化判定** —— `TYPE_REQUIRED`(C12 必填字段)、`LD_REJECTED_TYPES`、
   `BODY_HIDE_PATTERNS`(C14 第三方脚本黑名单)。改它们等于改判定逻辑,
   该走 PR 人审,不该藏在某人本地的 yaml 里。要改就改 `scripts/config.py`。
-
-### 维护者:改了默认值之后
-
-默认值住 `scripts/config.py`,白名单住同文件的 `TUNABLE`。
-`references/config.example.yaml` 是**生成物**,改完默认值要重新生成:
-
-```bash
-python3 scripts/config.py --write-example
-```
-
-忘了也没事:`--verify-only` 会拿模板跟当前默认值比对,对不上就以 1 退出(CI 会跑)。
-**一份说着旧默认值的模板比没有模板更坏** —— 照它建出来的 config.yaml 会把早已改过的
-阈值又锁回旧值,而且没有任何地方会报警。
-
-## 改清单的时候
-
-**checklist 与脚本是两份,各自维护**——检查逻辑没法从表格自动生成。但条目集合可以对齐:
-每次启动会跑 `verify_checklist_sync()`,「有哪些条目、什么优先级、在哪一节」对不上就在 stdout 打 ⚠️。
-
-**加条目的顺序:先改 `references/checklist/checklist.md`,再改 `scripts/run.py` 的 `CHECKS` 和判定逻辑。**
-编号是永久 ID,只顺延、不回收、不重排。
-
-**只有一份正本,不要复制。** 清单、references、checker 各只存在一处,改就改那一处。

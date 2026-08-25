@@ -59,7 +59,7 @@ seo-conformance.md;流程判定随规则住 methods。)
 > 本节由 **flag 或站点配置**触发(`ymyl` 标记、语言配置),**不由页型触发**
 > (2026-08-25:页型条件整体退役 —— Google 不消费 `WebPage` 子类型,而维护页型声明的成本
 > 全压在 content 侧,漏标即静默 N.A.。理由见 [C12.md](references/C12.md) 负向约束)。
-> 执行层为**人审**(上线前过检 + 定期抽查);JSON-LD 的声明↔可见一致依据见
+> 执行层为**人审**(上线前过检 + 定期抽查);JSON-LD 的声明与可见一致依据见
 > [references/C12.md](references/C12.md) 三节。
 
 | ID | 优先级 | 检查 | 触发条件 | 判定 | 执行层 |

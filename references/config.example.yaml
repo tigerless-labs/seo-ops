@@ -79,3 +79,6 @@ OG_IMAGE_HEIGHT: 630
 
 # C3:归一跳数上限(一跳到位才不掉权重)
 MAX_REDIRECT_HOPS: 1
+
+# 报告里单格证据的字符上限;完整证据始终进 checks.db
+EVIDENCE_MAX_CHARS: 300
