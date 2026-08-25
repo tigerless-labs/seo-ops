@@ -33,6 +33,7 @@ JSON-LD、OG、hreflang、CWV、AI 爬虫放行等),以及定 content 团队该�
 | [checker/run.py](checker/run.py) | 跑 C 集机器项,出报告 | 验收时 |
 | [redlines.md](redlines.md) | **R 集**:R1–R8 禁止事项(人闸,不是机器检查) | 动内容策略、动链接、动结构化数据之前 |
 | [ai-crawlers.yaml](ai-crawlers.yaml) | C1 检查的 AI 爬虫 UA 清单 | 要增删被检查的 AI 爬虫时 |
+| [skills/](skills/README.md) | 两个可单独装到别的仓库去的知识 skill(`seo-ops` / `seo-content`) | 要让别的仓库的 agent 也能对着清单干活 |
 
 `<N>` 是条目编号,与清单里的 ID 一一对应:C12 的详情就是 `checklist/references/C12.md`。
 编号有断档是正常的(如无 T11)——退役的号不回收,详见「改清单的时候」。
@@ -140,3 +141,6 @@ python3 checker/run.py --site <id>   # 只跑其中一个
 
 **加条目的顺序:先改 checklist.md,再改 run.py 的 `CHECKS` 和判定逻辑。**
 编号是永久 ID,只顺延、不回收、不重排。
+
+**改完正本记得同步 skill 副本**:`python3 skills/sync.py`(校验用 `--check`)。
+`skills/*/checklist/` 与 `skills/*/content/` 是生成物,直接改会被下次同步覆盖。
