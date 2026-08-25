@@ -1,0 +1,3 @@
+# checker 依赖(其余全是标准库;Python ≥ 3.9)
+requests>=2.31
+PyYAML>=6.0

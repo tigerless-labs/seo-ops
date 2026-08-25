@@ -1,0 +1,99 @@
+---
+name: seo-ops
+description: SEO 基础工程的检查清单与 checker 脚本。当需要检查或验收一个网站的 SEO/GEO 结构合规(robots、sitemap、canonical、JSON-LD、OG、hreflang、CWV、AI 爬虫放行等),或需要知道 content 团队该为 SEO 提供哪些信息时使用。跑 checker 出报告、查某条检查的详细要求、定 content 供给清单,都走这里。
+---
+
+# seo-ops · SEO 基础工程
+
+## 覆盖范围
+
+**SEO 基础工程** = 让搜索引擎和 AI 检索能**抓到、读懂、收录、引用**一个网站所必需的机器可读结构。
+
+它是地基,不是增长手段。做好了不保证排名,但做不好上面盖什么都没用——爬虫抓不到的页面,
+内容再好也不存在。所以它的判定是**二元的结构问题**(该有的结构在不在、对不对),
+不是效果问题(排名高不高、流量多不多)。
+
+**查什么**:最终 HTTP/HTML 产出的机器可读面——谁产出的不管(后端模板、前端代码、
+第三方脚本),只要爬虫看得见就被覆盖。分界线是「机器可读面 / 人可感面」,不是前端/后端。
+
+**不查**:样式、交互、体验、代码质量;内容真伪与质量;排名与流量;流程。
+**清单全绿 ≠ 全部合规。**
+
+## 三份东西
+
+| | 是什么 | 给谁 |
+|---|---|---|
+| [checklist/checklist.md](checklist/checklist.md) | **C 集**:26 条结构检查,分站级 / 每收录页 / 条件项 | 工程团队 |
+| [content/content-checklist.md](content/content-checklist.md) | **T 集**:SEO 基础工程所需信息的供给清单 | **content / 设计团队** |
+| [checker/run.py](checker/run.py) | 跑 C 集机器项,出报告 | 谁验收谁跑 |
+
+每条 C / T 都有一篇详细说明,住 `checklist/references/` 与 `content/references/`。
+红线(禁止事项)见 [redlines.md](redlines.md)。
+
+## 跑 checker
+
+```bash
+pip install -r checker/requirements.txt
+python3 checker/run.py --target https://example.com
+```
+
+| 命令 | 跑什么 |
+|---|---|
+| `run.py --target https://example.com` | 任意站点根 URL(origin),不需要配置文件 |
+| `run.py --target http://localhost:3000` | 本地部署(自动判定为本地模式) |
+| `run.py` | `sites.yaml` 里的全部站点 |
+| `run.py --site <id>` | `sites.yaml` 里的一个站 |
+
+多站要先建 `sites.yaml`,照抄 [sites.example.yaml](sites.example.yaml) 改。
+
+临时覆盖参数:`--page-sample N` `--sitemap-sample N` `--max-pages N` `--sleep S`。
+
+**`--target` 必须是 origin**(scheme + host[:port]),不带 path/query。
+
+耗时:默认单线程 1 秒间隔,约 `2 × sitemap 条目数` 个请求。271 页的站约 7 分钟;
+想快用 `--page-sample 100` 抽样——结构问题是模板级的,抽样和全量看到的是同一批。
+
+## 读报告
+
+输出 `checker/out/report-<site>-<date>.md`,结构与 checklist 一一对应。
+
+| 结果 | 含义 |
+|---|---|
+| ✅ pass | 测了,通过 |
+| 🔴 fail | 测了,没通过——证据列给出违规页与原因 |
+| ⚪ N.A. | **没测**,括号里是原因码。**「没测」不是「没事」** |
+| 👤 人审 | 脚本不判,列出来提醒人过 |
+
+常见 N.A. 原因码:`need-domain`(本地模式)、`need-crux-key` / `need-crux-data`(C4)、
+`need-key-declaration`(C5)、`need-declaration`(未声明渲染策略)、`no-pages`、
+`crawl-capped`(爬取触上限)、`throttled`(被目标限流,降速重跑)。
+
+优先级:**P0 = 存在层/事故层**(爬不到、收不进);**P1 = 表现层**(排名与引用打折);**P2 = 优化项**。
+
+## 配置
+
+判定参数全在 [checker/config.py](checker/config.py),按 C 号分组。改阈值只动这里,判定逻辑住 `run.py`。
+
+常调的:
+
+| 参数 | 作用 |
+|---|---|
+| `FETCH_SLEEP` / `FETCH_CONCURRENCY` | 抓取节流;整体 QPS ≈ 并发 / 间隔。默认 1 / 1 |
+| `PAGE_SAMPLE_SIZE` | 页级检查覆盖:`0` = 全量,`>0` = 抽样上限 |
+| `CRAWL_MAX_PAGES` | 内链图爬取上限(C6) |
+| `TITLE_MAX_CHARS` / `DESC_MAX_CHARS` | C11 长度线 |
+| `TYPE_REQUIRED` | C12 各 JSON-LD 类型的必填字段 |
+| `LD_REJECTED_TYPES` | C12 负向扫描:不采纳的类型及理由 |
+| `BODY_HIDE_PATTERNS` | C14 第三方脚本黑名单(新工具在此追加) |
+| `ai-crawlers.yaml` | C1 检查的 AI 爬虫 UA 清单 |
+
+**机密不进 config.py**:`CRUX_API_KEY`(C4)与 `INDEXNOW_KEYS`(C5)住 `checker/.env`,
+模板见 `checker/.env.example`。不填就相应条目记 N.A.,不判红。
+
+## 改清单的时候
+
+**checklist 与脚本是两份,各自维护**——检查逻辑没法从表格自动生成。但条目集合可以对齐:
+每次启动会跑 `verify_checklist_sync()`,「有哪些条目、什么优先级、在哪一节」对不上就在 stdout 打 ⚠️。
+
+**加条目的顺序:先改 checklist.md,再改 run.py 的 `CHECKS` 和判定逻辑。**
+编号是永久 ID,只顺延、不回收、不重排。
