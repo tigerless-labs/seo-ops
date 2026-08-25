@@ -1,11 +1,11 @@
 """checker 参数配置 — 全部可调参数的唯一入口(默认值即阶段一基线)。
 
 原则:判定逻辑住 run.py,判定参数住本文件;改阈值/清单只动这里,人审后合并。
-**机密不进本文件** — API key 一类住 `<config_dir>/.env`(默认 ~/.config/seo-ops/),模板见 `.env.example`。
+**机密不进本文件** — API key 一类住 `<config_dir>/.env`(默认 ~/.config/seo-ops/),模板见 `references/.env.example`。
 C4(CWV)无数据时 checker 输出 no-data(N.A.),不判红——阈值本身是 Google 官方常量。
 C 编号对应 references/checklist/checklist.md(2026-08-24 重排后)。
 """
-import os
+import json, os
 from pathlib import Path
 
 def _documents_dir():
@@ -89,7 +89,7 @@ def load_env(d=None):
 
       1. <config_dir>/.env      —— 正位(默认 ~/.config/seo-ops/.env)
       2. <state_dir>/.env       —— 旧布局,告警
-      3. 包内 scripts/.env       —— 更旧的布局,告警
+      3. 包内 scripts/.env      —— 更旧的布局,告警
 
     `setdefault` 而非赋值:**已 export 的环境变量永远赢过所有文件** —— CI 里注入 key
     不该被谁的本地 .env 盖掉。
@@ -284,3 +284,106 @@ VIEWPORT_REQUIRED_TOKEN = "width=device-width"
 
 # ── C25 mixed content(只判子资源,导航出链 <a> 不算)──
 SUBRESOURCE_TAGS = ("img", "script", "iframe", "video", "audio", "source", "embed", "object")
+
+# ── 用户可覆盖的参数 ──────────────────────────────────
+# 名字 → 一行说明。**只有这里登记的项**能被 <config_dir>/config.yaml 覆盖。
+#
+# 不在这份白名单里的是有意排除的,分三类:
+#   机密    CRUX_API_KEY / INDEXNOW_KEYS —— 住 .env,不进明文配置
+#   常量    CWV_LCP_MS / CWV_INP_MS / CWV_CLS(Google 官方 good 阈值)、
+#           SITEMAP_MAX_URLS_PER_FILE(sitemaps.org 协议硬上限)、
+#           VIEWPORT_REQUIRED_TOKEN —— 调了就不是这条检查了
+#   结构化  TYPE_REQUIRED / LD_REJECTED_TYPES / BODY_HIDE_PATTERNS 等 ——
+#           改它们等于改判定逻辑,该走 PR 人审,不该藏在某人本地的 yaml 里
+TUNABLE = {
+    "UA":                                  "抓取用的 User-Agent(真实浏览器 UA;Cloudflare 拦伪装爬虫 UA)",
+    "REQUEST_TIMEOUT":                     "单请求超时(秒)",
+    "FETCH_SLEEP":                         "单个 worker 两次请求的间隔(秒);整体 QPS ≈ 并发 / 间隔",
+    "FETCH_CONCURRENCY":                   "并发抓取线程数;1 = 顺序执行。打开前须重做并发对拍",
+    "PAGE_SAMPLE_SIZE":                    "页级检查覆盖:0 = sitemap 全量,>0 = 抽样上限",
+    "THROTTLE_RETRIES":                    "单请求遇 429/503 的重试次数(指数退避)",
+    "THROTTLE_BACKOFF":                    "首次退避秒数,之后翻倍",
+    "THROTTLE_MAX_SLEEP":                  "自适应叠加到每请求间隔上的上限(秒)",
+    "THROTTLE_RECOVER_AFTER":              "连续成功多少次回落一档(AIMD 的加性恢复)",
+    "SITEMAP_NEWEST_LASTMOD_MAX_AGE_DAYS": "C2:全站最新 lastmod 距今超此值 = sitemap 失养",
+    "SITEMAP_URL_SAMPLE_SIZE":             "C2:条目可达性抽查数",
+    "SITEMAP_LASTMOD_CLUSTER_RATIO":       "C2:单日 lastmod 簇占比超此值且为当天 = 疑似构建戳",
+    "LANG_REDIRECT_SAMPLE_SIZE":           "C26:自动语言重定向的抽样页数",
+    "CRAWL_MAX_PAGES":                     "C6:内链图爬取上限(防失控)",
+    "SSR_TEXT_RATIO":                      "C9:禁 JS 文本 / 渲染版文本 下限(接 headless 后启用)",
+    "SSR_MIN_TEXT_CHARS":                  "C9:禁 JS 抓取正文低于此值 = 疑似 CSR 空壳",
+    "CACHE_DIFF_SAMPLE_SIZE":              "C10:同 URL 双抓 diff 的抽查页数",
+    "TITLE_MAX_CHARS":                     "C11:title 长度上限",
+    "DESC_MAX_CHARS":                      "C11:description 长度上限",
+    "MIN_CONTENT_CHARS":                   "C13:正文字数下限(thin content)",
+    "RETIRED_SAMPLE_SIZE":                 "C20:退役 URL 抽查数",
+    "OG_IMAGE_WIDTH":                      "C19:og:image 建议宽",
+    "OG_IMAGE_HEIGHT":                     "C19:og:image 建议高",
+    "MAX_REDIRECT_HOPS":                   "C3:归一跳数上限(一跳到位才不掉权重)",
+}
+
+
+def render_example():
+    """按 TUNABLE 与**当前默认值**渲染 config.example.yaml 的内容。
+
+    示例文件是生成物,不是手写的 —— 手写的示例迟早跟代码对不上,而一份说着
+    旧默认值的模板比没有模板更坏。`run.py --verify-only` 会拿它跟这里比对,
+    对不上就以 1 退出(CI 会跑)。改了默认值就重新生成:
+        python3 scripts/config.py --write-example
+    """
+    lines = [
+        "# seo-ops 可调参数 —— 复制到 <config_dir>/config.yaml 后按需改。",
+        "#   默认位置:${XDG_CONFIG_HOME:-~/.config}/seo-ops/config.yaml",
+        "#   mkdir -p ~/.config/seo-ops && cp references/config.example.yaml ~/.config/seo-ops/config.yaml",
+        "#",
+        "# 下面每一行都是**当前默认值**,原样保留即等同不配置。只改你要改的那几行,",
+        "# 其余留着或删掉都行 —— 没写的项走默认。",
+        "#",
+        "# 机密不进本文件:CRUX_API_KEY / INDEXNOW_KEYS 住同目录的 .env。",
+        "# 未登记的键会被拒绝(拼错的键名不会被静默忽略)。",
+        "",
+    ]
+    for name, why in TUNABLE.items():
+        v = globals()[name]
+        lines.append(f"# {why}")
+        lines.append(f"{name}: {json.dumps(v, ensure_ascii=False)}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def load_overrides(path=None):
+    """读 <config_dir>/config.yaml 覆盖默认值。
+
+    **未知键与类型不符一律报错退出**,不静默忽略 —— 这是个验收工具,
+    「我明明调了阈值」却因为拼错键名而按默认值出报告,比直接报错危险得多。
+    """
+    f = path or (config_dir() / "config.yaml")
+    if not f.exists():
+        return
+    import yaml
+    data = yaml.safe_load(f.read_text()) or {}
+    if not isinstance(data, dict):
+        raise SystemExit(f"{f}:顶层应是 key: value 映射,读到 {type(data).__name__}")
+    for k, v in data.items():
+        if k not in TUNABLE:
+            raise SystemExit(
+                f"{f}:不认识的配置项 {k!r}。可用项见 references/config.example.yaml;"
+                f"机密请放同目录的 .env。")
+        want = type(globals()[k])
+        # bool 是 int 的子类,别让 true 悄悄变成 1
+        if isinstance(v, bool) != (want is bool) or not isinstance(v, (want, int) if want is float else want):
+            raise SystemExit(f"{f}:{k} 应为 {want.__name__},读到 {type(v).__name__}({v!r})")
+        globals()[k] = want(v) if want is float else v
+
+
+load_overrides()
+
+
+if __name__ == "__main__":
+    import sys
+    if "--write-example" in sys.argv:
+        out = Path(__file__).resolve().parents[1] / "references" / "config.example.yaml"
+        out.write_text(render_example())
+        print(f"✅ 已重新生成 {out}")
+    else:
+        sys.exit("用法:python3 scripts/config.py --write-example")

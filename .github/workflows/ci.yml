@@ -30,7 +30,7 @@ jobs:
       - name: 语法
         run: python -m compileall -q scripts
 
-      - name: 清单与脚本对齐(C 集条目/优先级/所属节)
+      - name: 清单与脚本对齐 + config.example 与默认值一致
         run: python scripts/run.py --verify-only
 
       # ── 目录解析:两个默认位置必须落在 home 下,且彼此分开 ──

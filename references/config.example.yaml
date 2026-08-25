@@ -1,0 +1,81 @@
+# seo-ops 可调参数 —— 复制到 <config_dir>/config.yaml 后按需改。
+#   默认位置:${XDG_CONFIG_HOME:-~/.config}/seo-ops/config.yaml
+#   mkdir -p ~/.config/seo-ops && cp references/config.example.yaml ~/.config/seo-ops/config.yaml
+#
+# 下面每一行都是**当前默认值**,原样保留即等同不配置。只改你要改的那几行,
+# 其余留着或删掉都行 —— 没写的项走默认。
+#
+# 机密不进本文件:CRUX_API_KEY / INDEXNOW_KEYS 住同目录的 .env。
+# 未登记的键会被拒绝(拼错的键名不会被静默忽略)。
+
+# 抓取用的 User-Agent(真实浏览器 UA;Cloudflare 拦伪装爬虫 UA)
+UA: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+# 单请求超时(秒)
+REQUEST_TIMEOUT: 20
+
+# 单个 worker 两次请求的间隔(秒);整体 QPS ≈ 并发 / 间隔
+FETCH_SLEEP: 1.0
+
+# 并发抓取线程数;1 = 顺序执行。打开前须重做并发对拍
+FETCH_CONCURRENCY: 1
+
+# 页级检查覆盖:0 = sitemap 全量,>0 = 抽样上限
+PAGE_SAMPLE_SIZE: 0
+
+# 单请求遇 429/503 的重试次数(指数退避)
+THROTTLE_RETRIES: 3
+
+# 首次退避秒数,之后翻倍
+THROTTLE_BACKOFF: 2.0
+
+# 自适应叠加到每请求间隔上的上限(秒)
+THROTTLE_MAX_SLEEP: 4.0
+
+# 连续成功多少次回落一档(AIMD 的加性恢复)
+THROTTLE_RECOVER_AFTER: 20
+
+# C2:全站最新 lastmod 距今超此值 = sitemap 失养
+SITEMAP_NEWEST_LASTMOD_MAX_AGE_DAYS: 30
+
+# C2:条目可达性抽查数
+SITEMAP_URL_SAMPLE_SIZE: 20
+
+# C2:单日 lastmod 簇占比超此值且为当天 = 疑似构建戳
+SITEMAP_LASTMOD_CLUSTER_RATIO: 0.2
+
+# C26:自动语言重定向的抽样页数
+LANG_REDIRECT_SAMPLE_SIZE: 5
+
+# C6:内链图爬取上限(防失控)
+CRAWL_MAX_PAGES: 5000
+
+# C9:禁 JS 文本 / 渲染版文本 下限(接 headless 后启用)
+SSR_TEXT_RATIO: 0.9
+
+# C9:禁 JS 抓取正文低于此值 = 疑似 CSR 空壳
+SSR_MIN_TEXT_CHARS: 500
+
+# C10:同 URL 双抓 diff 的抽查页数
+CACHE_DIFF_SAMPLE_SIZE: 10
+
+# C11:title 长度上限
+TITLE_MAX_CHARS: 60
+
+# C11:description 长度上限
+DESC_MAX_CHARS: 150
+
+# C13:正文字数下限(thin content)
+MIN_CONTENT_CHARS: 400
+
+# C20:退役 URL 抽查数
+RETIRED_SAMPLE_SIZE: 10
+
+# C19:og:image 建议宽
+OG_IMAGE_WIDTH: 1200
+
+# C19:og:image 建议高
+OG_IMAGE_HEIGHT: 630
+
+# C3:归一跳数上限(一跳到位才不掉权重)
+MAX_REDIRECT_HOPS: 1

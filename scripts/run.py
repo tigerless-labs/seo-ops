@@ -1027,6 +1027,22 @@ def verify_checklist_sync():
         print(m, flush=True)
     return msgs
 
+def verify_config_example():
+    """漂移守卫二:references/config.example.yaml 必须与 config.py 的默认值一致。
+
+    模板是生成物。**一份说着旧默认值的模板比没有模板更坏** —— 照它建出来的
+    config.yaml 会把早已改过的阈值又锁回旧值,而且没有任何地方会报警。
+    """
+    f = ROOT / "config.example.yaml"
+    if not f.exists():
+        msg = "⚠️  漂移:references/config.example.yaml 不存在,跑 `python3 scripts/config.py --write-example`"
+        print(msg, flush=True); return [msg]
+    if f.read_text() == CFG.render_example():
+        return []
+    msg = ("⚠️  漂移:references/config.example.yaml 与 config.py 的默认值不一致,"
+           "跑 `python3 scripts/config.py --write-example` 重新生成")
+    print(msg, flush=True); return [msg]
+
 def render_report(site, R, mode, ok_n, total_n, args):
     lines = [f"# checker 报告:{site['id']}",
              "",
@@ -1147,7 +1163,7 @@ def main():
     args = ap.parse_args()
 
     if args.verify_only:
-        drift = verify_checklist_sync()
+        drift = verify_checklist_sync() + verify_config_example()
         print("✅ 清单与脚本对齐" if not drift else f"🔴 {len(drift)} 处漂移", flush=True)
         sys.exit(1 if drift else 0)
 

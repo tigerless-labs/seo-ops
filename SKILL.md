@@ -43,8 +43,7 @@ skill 本体(只读,更新时整包覆盖 —— **一个字节都别往里写**
 ├── scripts/
 │   ├── run.py                   跑 C 集机器项,出报告
 │   ├── config.py                判定参数(按 C 号分组)
-│   ├── requirements.txt         requests + PyYAML
-│   └── .env.example             机密模板,复制到 <config-dir>/.env
+│   └── requirements.txt         requests + PyYAML
 └── references/
     ├── checklist/
     │   ├── checklist.md         C 集:26 条结构检查,分站级/每收录页/条件项
@@ -53,7 +52,9 @@ skill 本体(只读,更新时整包覆盖 —— **一个字节都别往里写**
     │   ├── content-checklist.md T 集:SEO 所需信息的供给清单,每条标注下游 C 项
     │   └── references/T<N>.md   每条 T 的详细说明:要交什么、什么样算合格
     ├── ai-crawlers.yaml         C1 检查的 AI 爬虫 UA 清单(run.py 运行期读取)
-    └── sites.example.yaml       花名册模板,字段说明就在它的注释里
+    ├── sites.example.yaml       花名册模板,字段说明就在它的注释里
+    ├── config.example.yaml      可调参数模板(**生成物**,见「配置」一节)
+    └── .env.example             机密模板
 ```
 
 `<N>` 是条目编号,与清单里的 ID 一一对应:C12 的详情就是
@@ -67,6 +68,7 @@ skill 本体(只读,更新时整包覆盖 —— **一个字节都别往里写**
 | 位置 | 装什么 | 谁写的 | 怎么改位置 |
 |---|---|---|---|
 | `~/.config/seo-ops/sites.yaml` | 站点花名册(多站才需要;单站用 `--target`) | 你 | `$SEO_OPS_CONFIG_DIR` |
+| `~/.config/seo-ops/config.yaml` | 可调参数覆盖(不建就全走默认) | 你 | 同上 |
 | `~/.config/seo-ops/.env` | `CRUX_API_KEY` / `INDEXNOW_KEYS` | 你 | 同上 |
 | `~/Documents/seo-ops/out/report-<site>-<date>.md` | 人读的报告,每次同样 26 行 | 脚本 | `--state-dir` / `--out` / `$SEO_OPS_DIR` |
 | `~/Documents/seo-ops/out/checks.db` | 机读快照,跨次累积可 diff | 脚本 | 同上 |
@@ -129,7 +131,8 @@ python3 scripts/run.py --site <id>   # 只跑其中一个
 临时覆盖:`--page-sample N` `--sitemap-sample N` `--max-pages N` `--sleep S` `--workers N`。
 位置覆盖:产出用 `--state-dir` / `--out` 或 `$SEO_OPS_DIR`;配置用 `$SEO_OPS_CONFIG_DIR`。
 
-`--verify-only`:只跑漂移守卫(清单 vs 脚本),不联网,有漂移以 1 退出 —— CI 用的入口。
+`--verify-only`:只跑两道漂移守卫(清单 vs 脚本、config.example vs 默认值),
+不联网,有漂移以 1 退出 —— CI 用的入口。
 
 耗时:默认单线程 1 秒间隔,约 `2 × sitemap 条目数` 个请求。271 页的站约 7 分钟;
 想快用 `--page-sample 100` 抽样——结构问题是模板级的,抽样和全量看到的是同一批。
@@ -198,7 +201,15 @@ alt 文案有(只有看过图的人写得出)→ T14;`og:type` 没有(模板看�
 
 ## 配置
 
-判定参数全在 [scripts/config.py](scripts/config.py),按 C 号分组。改阈值只动这里,判定逻辑住 `scripts/run.py`。
+**调参数不要改 `scripts/config.py`** —— 那是 skill 本体,更新时整包覆盖,改了就没。
+建一份自己的:
+
+```bash
+mkdir -p ~/.config/seo-ops && cp references/config.example.yaml ~/.config/seo-ops/config.yaml
+```
+
+模板里每一行都是**当前默认值**,原样保留即等同不配置;只改要改的几行,其余留着或删掉都行。
+不建这个文件就全走默认。
 
 常调的:
 
@@ -208,14 +219,33 @@ alt 文案有(只有看过图的人写得出)→ T14;`og:type` 没有(模板看�
 | `PAGE_SAMPLE_SIZE` | 页级检查覆盖:`0` = 全量,`>0` = 抽样上限 |
 | `CRAWL_MAX_PAGES` | 内链图爬取上限(C6) |
 | `TITLE_MAX_CHARS` / `DESC_MAX_CHARS` | C11 长度线 |
-| `TYPE_REQUIRED` | C12 各 JSON-LD 类型的必填字段 |
-| `LD_REJECTED_TYPES` | C12 负向扫描:不采纳的类型及理由 |
-| `BODY_HIDE_PATTERNS` | C14 第三方脚本黑名单(新工具在此追加) |
-| `references/ai-crawlers.yaml` | C1 检查的 AI 爬虫 UA 清单 |
+| `THROTTLE_*` | 限流退避与恢复 |
 
-**机密不进 config.py**:`CRUX_API_KEY`(C4)与 `INDEXNOW_KEYS`(C5)住
-`~/.config/seo-ops/.env`,模板见 `scripts/.env.example`。不填就相应条目记 N.A.,不判红。
-已 export 的环境变量优先于文件 —— CI 注入 key 不会被谁的本地 .env 盖掉。
+**未登记的键会被拒绝并退出**,不静默忽略 —— 拼错键名却按默认值出报告,比直接报错危险。
+类型不符同样报错。
+
+**三类东西不能在这里调**:
+
+- **机密** —— `CRUX_API_KEY`(C4)、`INDEXNOW_KEYS`(C5)住同目录的 `.env`,
+  模板见 `references/.env.example`。不填就相应条目记 N.A.,不判红。
+- **常量** —— CWV 三个阈值是 Google 官方 good 线、sitemap 5 万条是 sitemaps.org
+  协议硬上限、viewport token 是规范值;调了就不是这条检查了。
+- **结构化判定** —— `TYPE_REQUIRED`(C12 必填字段)、`LD_REJECTED_TYPES`、
+  `BODY_HIDE_PATTERNS`(C14 第三方脚本黑名单)。改它们等于改判定逻辑,
+  该走 PR 人审,不该藏在某人本地的 yaml 里。要改就改 `scripts/config.py`。
+
+### 维护者:改了默认值之后
+
+默认值住 `scripts/config.py`,白名单住同文件的 `TUNABLE`。
+`references/config.example.yaml` 是**生成物**,改完默认值要重新生成:
+
+```bash
+python3 scripts/config.py --write-example
+```
+
+忘了也没事:`--verify-only` 会拿模板跟当前默认值比对,对不上就以 1 退出(CI 会跑)。
+**一份说着旧默认值的模板比没有模板更坏** —— 照它建出来的 config.yaml 会把早已改过的
+阈值又锁回旧值,而且没有任何地方会报警。
 
 ## 改清单的时候
 
