@@ -1,7 +1,7 @@
 """checker 参数配置 — 全部可调参数的唯一入口(默认值即阶段一基线)。
 
 原则:判定逻辑住 run.py,判定参数住本文件;改阈值/清单只动这里,人审后合并。
-**机密不进本文件** — API key 一类住同目录 `.env`(已 gitignore),模板见 `.env.example`。
+**机密不进本文件** — API key 一类住 `<state_dir>/.env`(已 gitignore),模板见 `.env.example`。
 C4(CWV)无数据时 checker 输出 no-data(N.A.),不判红——阈值本身是 Google 官方常量。
 C 编号对应 checklist/checklist.md(2026-08-24 重排后)。
 """
@@ -15,9 +15,14 @@ def state_dir(override=None):
 
     为什么不放包内:这份 checker 会被复制进 skill 目录,而 skill 更新 = 整包覆盖,
     包内的可写状态必然随更新丢失(checks.db 尤其可惜,它设计成跨次累积好做 diff)。
-    `CLAUDE_PROJECT_DIR` 是 Claude Code 给 skill 的项目根,**与 skill 装在哪无关** ——
-    状态因此跟着「被检查的项目」走,而不是跟着「工具装在哪」走。
-    clone 本仓库直接用时 cwd 就是仓库根,同一条规则,得到 <仓库>/.seo-ops/。
+    状态该跟着「被检查的项目」走,而不是跟着「工具装在哪」走。
+
+    **注意 `CLAUDE_PROJECT_DIR` 在 Bash 里通常读不到** —— Claude Code 只把它作为
+    字符串替换喂给 SKILL.md 正文与 allowed-tools,以及作为环境变量喂给 hook / stdio MCP
+    等被 spawn 的进程;Bash 工具的 shell 不在其列。所以 skill 里的调用**必须显式传**
+    `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops`(替换在 markdown 里就完成了)。
+    这里仍读一次环境变量,是为了 hook / MCP 那类真能拿到它的场景。
+    都没有时退到 cwd:clone 本仓库直接用时 cwd 就是仓库根,得到 <仓库>/.seo-ops/。
     """
     if override:
         return Path(override).expanduser().resolve()

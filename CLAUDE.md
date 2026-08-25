@@ -54,6 +54,13 @@ JSON-LD、OG、hreflang、CWV、AI 爬虫放行等),以及定 content 团队该�
 改位置用 `--state-dir <path>` 或 `$SEO_OPS_DIR`。**不要往包内写任何东西** —— 这份 checker
 会被 `skills/sync.py` 复制进 skill,而 skill 更新是整包覆盖,写进去的必丢。
 
+⚠️ **`CLAUDE_PROJECT_DIR` 在 Bash 里通常读不到。** Claude Code 只把它当**字符串替换**喂给
+SKILL.md 正文与 `allowed-tools`,另外作为环境变量喂给 hook / stdio MCP 等被 spawn 的进程
+—— Bash 工具的 shell 不在其列。所以 skill 里的调用**必须显式传**
+`--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops`(替换在 markdown 里就完成,进 shell 的已是真实路径);
+`state_dir()` 里那次环境变量读取只对 hook / MCP 场景有效,否则退到 cwd。
+在本仓库里直接跑不受影响 —— cwd 就是仓库根。
+
 **一个「站」= 一个 origin**(scheme + host[:port],不带 path/query)。子域名算独立的站
 (`blog.` / `docs.` 各算一个);裸域与 www 不算两个 —— 它们该归一到同一个 canonical host,
 这正是 C3 要检的,所以只认你选定的那一个。

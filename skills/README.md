@@ -26,7 +26,15 @@ cp -r skills/seo-content ~/.claude/skills/
 | | 变量 | 谁用 |
 |---|---|---|
 | 脚本本体 | `${CLAUDE_SKILL_DIR}` | `SKILL.md` 里写运行命令,并在 `allowed-tools` 里写同一路径 —— 两处一致才不弹权限提示 |
-| 实例状态与产出 | `${CLAUDE_PROJECT_DIR}` | checker 把 `sites.yaml` / `.env` / `out/` 落在 `${CLAUDE_PROJECT_DIR}/.seo-ops/` |
+| 实例状态与产出 | `${CLAUDE_PROJECT_DIR}` | `SKILL.md` 的命令里显式传 `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops` |
+
+**这两个 `${...}` 是字符串替换,不是环境变量。** Claude Code 只在两个地方替换它们:
+SKILL.md 正文、`allowed-tools` frontmatter;另外作为环境变量喂给 hook / stdio MCP server
+等被 spawn 的进程 —— **Bash 工具的 shell 拿不到**。所以路径必须在 markdown 里就写死进命令行,
+指望脚本自己 `os.environ.get("CLAUDE_PROJECT_DIR")` 会落空,退到 cwd,而 cwd 随 `cd` 漂。
+
+`${CLAUDE_PROJECT_DIR}` 指 **session 启动时的项目根**:不随 `cd` 变,进 git worktree 也仍指
+主 checkout —— 正因为它不漂,才配当状态的锚点。
 
 **skill 目录里不许有可写状态。** 普通 skill 在 Claude Code 的字符串替换里
 **没有任何「更新后仍存活」的数据目录** —— `${CLAUDE_PLUGIN_DATA}` 只有 plugin skill 能用。

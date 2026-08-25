@@ -22,12 +22,20 @@ allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/checker/run.py *)
 
 ```bash
 pip install -r ${CLAUDE_SKILL_DIR}/checker/requirements.txt      # 首次;只要 requests 和 PyYAML
-python3 ${CLAUDE_SKILL_DIR}/checker/run.py --target https://example.com
+python3 ${CLAUDE_SKILL_DIR}/checker/run.py \
+  --state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops \
+  --target https://example.com
 ```
 
+**每次都要带上 `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops`。** 这两个 `${...}` 是 Claude Code
+在读这份 SKILL.md 时做的**字符串替换**,展开成真实路径后才进 shell —— 它们**不是**你能在
+bash 里读到的环境变量(Bash 工具的 shell 里没有 `CLAUDE_PROJECT_DIR`)。不传的话脚本只能
+退到 cwd,而 cwd 会随 `cd` 漂移,同一个项目的报告可能落到两个地方去。
+
 **脚本住 skill 里,状态住项目里** —— 报告、`sites.yaml`、API key 全部落在
-`${CLAUDE_PROJECT_DIR}/.seo-ops/`,与 skill 装在哪无关。**不要往 skill 目录里写任何东西**,
-skill 更新是整包覆盖,写进去的必丢。要换位置用 `--state-dir <path>` 或 `$SEO_OPS_DIR`。
+`${CLAUDE_PROJECT_DIR}/.seo-ops/`,与 skill 装在哪无关。`${CLAUDE_PROJECT_DIR}` 是
+**session 启动时的项目根**,不随 `cd` 变、进 worktree 也仍指主 checkout,所以它是个稳定锚点。
+**不要往 skill 目录里写任何东西**,skill 更新是整包覆盖,写进去的必丢。
 
 ```
 ${CLAUDE_PROJECT_DIR}/.seo-ops/
@@ -50,7 +58,7 @@ ${CLAUDE_PROJECT_DIR}/.seo-ops/
 | `--site <id>` / 不传 | 按 `<state-dir>/sites.yaml` 跑其中一个 / 全部 |
 | `--page-sample N` | 页级检查抽样上限;`0` = 全量。271 页的站全量约 7 分钟,想快用 `--page-sample 100` |
 | `--sleep S` / `--workers N` | 节流。整体 QPS ≈ workers / sleep,默认 1 / 1 |
-| `--state-dir <path>` | 覆盖状态目录 |
+| `--state-dir <path>` | 状态目录。**skill 用法下必传**(见上);也可用 `$SEO_OPS_DIR` |
 
 **先看报告顶部的告警行**,有就说明这次结论不完整:🚦 被目标限流(429/503)= 我们打太快,
 受影响的判定已记 N.A. 不记 fail,**假红比跑得慢危险** —— `--workers` 减半或调大 `--sleep`
@@ -78,7 +86,7 @@ ${CLAUDE_PROJECT_DIR}/.seo-ops/
 - **C21 / C22 是人审项** —— 脚本不判,agent 也不要替人下结论,列出来提醒人过。
 - **YMYL 内容**(影响健康 / 财务 / 法律 / 人身安全)触发 C21;**拿不准按 YMYL 处理**。
 - **红线另有一套**:R1–R8 是禁止事项(买链接、cloaking、假结构化数据、PII 进 prompt 等),
-  是人闸不是机器检查。动内容策略、链接、结构化数据之前先看仓库里的 `redlines.md`。
+  是人闸不是机器检查。动内容策略、链接、结构化数据之前先看 [redlines.md](redlines.md)。
 
 ## 与 content 团队的分工
 
