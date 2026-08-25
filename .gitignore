@@ -3,3 +3,4 @@ __pycache__/
 checker/.env
 checker/out/
 sites.yaml
+.claude/autoharness/
