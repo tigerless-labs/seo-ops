@@ -1,9 +1,10 @@
----
-name: seo-ops
-description: SEO 基础工程的检查清单与 checker 脚本。当需要检查或验收一个网站的 SEO/GEO 结构合规(robots、sitemap、canonical、JSON-LD、OG、hreflang、CWV、AI 爬虫放行等),或需要知道 content 团队该为 SEO 提供哪些信息时使用。跑 checker 出报告、查某条检查的详细要求、定 content 供给清单,都走这里。
----
-
 # seo-ops · SEO 基础工程
+
+**这个仓库是干什么的**:检查或验收一个网站的 SEO/GEO 结构合规(robots、sitemap、canonical、
+JSON-LD、OG、hreflang、CWV、AI 爬虫放行等),以及定 content 团队该为 SEO 提供哪些信息。
+跑 checker 出报告、查某条检查的详细要求、开 content 供给清单,都在这里。
+
+**首次使用**:`pip install -r checker/requirements.txt`,然后见「跑 checker」。
 
 ## 覆盖范围
 
@@ -19,9 +20,9 @@ description: SEO 基础工程的检查清单与 checker 脚本。当需要检查
 **不查**:样式、交互、体验、代码质量;内容真伪与质量;排名与流量;流程。
 **清单全绿 ≠ 全部合规。**
 
-## 包里有什么
+## 仓库里有什么
 
-路径都相对包根:
+路径都相对仓库根:
 
 | 路径 | 是什么 | 什么时候读 |
 |---|---|---|
@@ -38,9 +39,8 @@ description: SEO 基础工程的检查清单与 checker 脚本。当需要检查
 
 ## 跑 checker
 
-```bash
-pip install -r checker/requirements.txt
-```
+所有命令都在**本仓库根目录**下跑 —— `run.py` 靠相对路径找 `checklist/checklist.md`
+与 `ai-crawlers.yaml`,`sites.yaml` 与 `checker/out/` 也都落在这里。
 
 **一个「站」= 一个 origin**(scheme + host[:port],不带 path/query)。子域名算独立的站
 (`blog.` / `docs.` 各算一个);裸域与 www 不算两个 —— 它们该归一到同一个 canonical host,
@@ -75,6 +75,8 @@ python3 checker/run.py --site <id>   # 只跑其中一个
 字段说明见 [sites.example.yaml](sites.example.yaml) 的注释。
 
 `sites.yaml` 在 `.gitignore` 里 —— 它是各人各机器的配置,只有 example 模板进版本库。
+`checker/.env` 与 `checker/out/` 同理。所以 `git pull` 更新本仓库时,这三样原地不动,
+不会被覆盖也不会被提交。
 
 ### 通用参数
 

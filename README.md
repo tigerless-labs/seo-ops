@@ -1,6 +1,6 @@
 # seo-ops
 
-**SEO 基础工程的检查清单 + checker 脚本,打包成一个 skill。**
+**SEO 基础工程的检查清单 + checker 脚本。**
 
 自包含,零外部依赖(除 `requests` / `PyYAML`),不联系任何服务,只读目标站点的公开 HTTP 产出。
 
@@ -8,20 +8,22 @@
 
 ## 装
 
-把下面整段复制给 Claude Code 或其他 coding agent,它会自己装好:
+```bash
+git clone https://github.com/tigerless-labs/seo-ops.git
+cd seo-ops && pip install -r checker/requirements.txt
+```
 
-````
-按 https://github.com/tigerless-labs/seo-ops/blob/main/INSTALL.md 的说明,
-把 seo-ops 装成一个 skill。装完照该文档最后一步向我汇报。
-````
+只有 `requests` 和 `PyYAML`,其余是标准库。Python ≥ 3.9。
 
 ## 用
 
-装好后直接在对话里说:
+在这个目录里开 Claude Code(或别的 coding agent),直接说:
 
-> 跑一下 seo-ops 检查 tigerless.com
+> 跑一下 tigerless.com 的 SEO 检查
 
-命令行、配置项、报告怎么读,都在 `SKILL.md` 里,agent 自己会查,不用你记。
+命令行、配置项、报告怎么读,agent 会从 `CLAUDE.md` 自己查,不用你记。
+
+更新:`git pull`。你的 `sites.yaml`、`checker/.env`、历史报告都在 `.gitignore` 里,不会被覆盖。
 
 ---
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""checker — 手动运行的检查脚本。用法与判定说明见包根 SKILL.md。
+"""checker — 手动运行的检查脚本。用法与判定说明见仓库根 CLAUDE.md。
 
 条目定义住 checklist/checklist.md(**唯一真相**),本脚本实现其机器项
 C1–C20、C23–C26;C21/C22 为人审项,报表列出不判。
@@ -12,7 +12,7 @@ C1–C20、C23–C26;C21/C22 为人审项,报表列出不判。
 
 输出:
   checker/out/report-<site>-<date>.md  — 与 checklist 同构的表单(三节;结果 + 证据)
-  checker/out/checks.db                    — checks 快照(SQLite,schema 见 SKILL.md)
+  checker/out/checks.db                    — checks 快照(SQLite,schema 见 CLAUDE.md)
 
 三条不变量:
   1. **三态判定** pass / fail / N.A.(reason) —— 「没测」和「没事」不许混成一个绿。
@@ -37,10 +37,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as CFG
 
 def _resolve_paths():
-    """定位三份数据文件,兼容两种布局 —— 这份脚本同时以 repo 内工具和独立 skill 两种形态存在,
-    路径写死就会分叉成两个副本,分叉了就必然有一份先烂掉。
-      repo :  checker/run.py  +  checklist/checklist.md
-      skill:  checker/run.py      +  checklist/checklist.md
+    """定位三份数据文件,兼容两种布局 —— 这份脚本既可能住在本仓库根下,也可能被塞进
+    别的仓库当子目录用。路径写死就会分叉成两个副本,分叉了就必然有一份先烂掉。
+      本仓库    :  checker/run.py  +  checklist/checklist.md
+      嵌在别处:  <any>/checker/run.py  +  <any>/checklist/checklist.md
     """
     here = Path(__file__).resolve()
     for root in (here.parents[2], here.parents[1]):
