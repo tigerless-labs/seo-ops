@@ -16,6 +16,10 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
   那 26 条是工程侧的活,由 checker 自动验。见「给 content 团队开交付单」。
 
 **首次跑 checker**:`pip install -r scripts/requirements.txt`(只要 requests 和 PyYAML)。
+报 `externally-managed-environment`(PEP 668,Debian/Ubuntu 常见)时改用系统包
+`apt install python3-requests python3-yaml`,或建个 venv —— **不要加
+`--break-system-packages`**,那是拿系统 Python 冒险换一个两行的依赖。
+很多机器上这两个包本来就有,先 `python3 -c "import requests, yaml"` 试一下。
 
 ## 覆盖范围
 

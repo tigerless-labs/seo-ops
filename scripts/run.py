@@ -38,6 +38,10 @@ from urllib.parse import urlparse, urljoin
 
 import requests, yaml
 
+# 装成 skill 后本目录可能只读、且「零写入」是我们对使用者的承诺 —— 而 import 会顺手
+# 在旁边写 __pycache__。实测装到 ~/.claude/skills/ 后确实出现了。字节码缓存对这个
+# 网络 I/O 为主的脚本没有可感收益,关掉换承诺成立。
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as CFG
 

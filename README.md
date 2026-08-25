@@ -12,8 +12,13 @@
 
 ```bash
 git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
-pip install -r ~/.claude/skills/seo-ops/scripts/requirements.txt
+python3 -c "import requests, yaml" ||
+  pip install -r ~/.claude/skills/seo-ops/scripts/requirements.txt
 ```
+
+只要 `requests` 和 `PyYAML`,很多机器上本来就有。装不上且报
+`externally-managed-environment`(PEP 668)时,用 `apt install python3-requests
+python3-yaml` 或建个 venv。
 
 Claude Code 个人级用 `~/.claude/skills/`、项目级用 `<repo>/.claude/skills/`;
 Codex 用 `~/.codex/skills/` 或 `.codex/skills/`;别家 agent 按自己的约定。
