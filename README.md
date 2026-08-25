@@ -1,78 +1,85 @@
 # seo-ops
 
-**SEO 基础工程的检查清单 + checker 脚本,整个仓库就是一个 agent skill。**
+三样东西:
 
-自包含,零外部依赖(除 `requests` / `PyYAML`),不联系任何服务,只读目标站点的公开 HTTP 产出。
+| | 是什么 |
+|---|---|
+| [references/checklist/checklist.md](references/checklist/checklist.md) | **C 集** —— 26 条 SEO/GEO 结构检查,分站级 / 每收录页 / 条件项。每条另有一篇详细说明(判定标准、常见错法、权威依据),住 `references/checklist/references/C<N>.md` |
+| [scripts/run.py](scripts/run.py) | **checker 脚本** —— 输入一个 URL 就模拟爬虫去抓、按 C 集出报告。**零 LLM、不依赖任何前端架构**:只读线上 HTTP/HTML 产出,React / Vue / Next / WordPress / 纯静态都一样测 |
+| [references/content/content-checklist.md](references/content/content-checklist.md) | **T 集** —— 给网站内容设计团队的供给清单:SEO 需要哪些信息由 content 提供(title/desc、H2 大纲、图片 alt、ymyl 判定、OG 文案等),每条标注它喂的下游 C 项。每条详情住 `references/content/references/T<N>.md` |
 
 ---
 
-## 装
+## 单独跑脚本(不装 skill 也能用)
 
-**整个仓库就是一个 skill。** clone 到 agent 加载 skill 的位置即可:
+```bash
+git clone https://github.com/tigerless-labs/seo-ops.git
+cd seo-ops
+python3 -c "import requests, yaml" || pip install -r scripts/requirements.txt
+```
+
+只要 `requests` 和 `PyYAML`,Python ≥ 3.9。报 `externally-managed-environment`(PEP 668)时用
+`apt install python3-requests python3-yaml` 或建 venv。
+
+```bash
+python3 scripts/run.py --target https://example.com      # 线上站
+python3 scripts/run.py --target http://localhost:3000    # 本地部署
+python3 scripts/run.py                                   # 跑 sites.yaml 里全部站
+python3 scripts/run.py --site <id>                       # 只跑其中一个
+```
+
+`--target` 必须是 origin(`scheme + host[:port]`,不带 path/query)。
+常用参数:`--page-sample N`(抽样,默认全量)、`--sleep S` / `--workers N`(节流)、
+`--out <path>`(报告落哪)、`--verify-only`(只跑自检,不联网)。
+
+**产出**落 `~/Documents/seo-ops/out/`:`report-<site>-<date>.md`(人读)与
+`checks.db`(SQLite,跨次累积可 diff)。
+
+**配置**在 `~/.config/seo-ops/`,都不是必需的,照模板复制即可:
+
+```bash
+mkdir -p ~/.config/seo-ops
+cp references/sites.example.yaml  ~/.config/seo-ops/sites.yaml    # 多站花名册
+cp references/config.example.yaml ~/.config/seo-ops/config.yaml   # 改阈值
+cp references/.env.example        ~/.config/seo-ops/.env          # CrUX / IndexNow key
+```
+
+271 页的站全量约 7 分钟(默认单线程 1 秒间隔)。
+
+---
+
+## 装成 skill(让 agent 全自动跑)
+
+整个仓库同时是一个 Agent Skill —— 装上之后直接说「检查一下 tigerless.com 的 SEO」,
+agent 会自己确认目标、跑脚本、读报告,并按 P0/P1/P2 讲清每条红项该怎么改。
+
+### 终端安装
+
+**Claude Code**
 
 ```bash
 git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
-python3 -c "import requests, yaml" ||
-  pip install -r ~/.claude/skills/seo-ops/scripts/requirements.txt
 ```
 
-只要 `requests` 和 `PyYAML`,很多机器上本来就有。装不上且报
-`externally-managed-environment`(PEP 668)时,用 `apt install python3-requests
-python3-yaml` 或建个 venv。
+**Codex**
 
-Claude Code 个人级用 `~/.claude/skills/`、项目级用 `<repo>/.claude/skills/`;
-Codex 用 `~/.codex/skills/` 或 `.codex/skills/`;别家 agent 按自己的约定。
-更新就 `git pull` —— 没有副本、没有同步脚本,只有一份正本。
+```bash
+git clone https://github.com/tigerless-labs/seo-ops.git ~/.codex/skills/seo-ops
+```
 
-## 用
+装项目级就把 `~/.claude` 换成 `<你的仓库>/.claude`(Codex 同理)。更新:`git pull`。
 
-装好后直接说:
+### 让 agent 自己装
 
-> 跑一下 tigerless.com 的 SEO 检查
+把下面整段复制给 agent:
 
-命令行、配置项、报告怎么读,agent 从 `SKILL.md` 自己查,不用你记。
+````
+把 https://github.com/tigerless-labs/seo-ops 装成一个 skill:
 
-配置(花名册 + API key)在 **`~/.config/seo-ops/`**,产出在 **`~/Documents/seo-ops/out/`**
-—— 都在 skill 目录外,所以更新时原地不动,也不可能被误提交。
-
-## content 团队怎么用
-
-**你只需要过一份清单:T 集。** 不用跑脚本,不用读 C 集(那是工程侧的活)。
-
-装法同上,然后说一句:**「用 seo-ops 检查这份页面 doc 的 SEO 供给项」**,把文档给它。
-它按 T 集逐条列出缺什么、怎么补,你照着补。就这些。
-
-清单本体是 [references/content/content-checklist.md](references/content/content-checklist.md),想自己读也行
-—— 每条都有一篇「要交什么、什么样算合格」的详细说明。
-
----
-
-## 这是什么
-
-**SEO 基础工程** = 让搜索引擎和 AI 检索能**抓到、读懂、收录、引用**一个网站所必需的机器可读结构。
-
-它是地基:做好了不保证排名,做不好上面盖什么都没用——爬虫抓不到的页面,内容再好也不存在。
-所以它的判定是**二元的结构问题**(该有的结构在不在、对不对),而不是效果问题(排名高不高)。
-
-| 路径 | 是什么 | 给谁 |
-|---|---|---|
-| `references/checklist/checklist.md` | **C 集** — 26 条结构检查,每条一篇详细说明 + 权威依据 | 工程团队 |
-| `references/content/content-checklist.md` | **T 集** — SEO 所需信息的供给清单,每条标注它喂的下游 C 项 | **content / 设计团队** |
-| `scripts/run.py` | 跑 C 集的机器项,输出与 checklist 同构的报告 | 谁验收谁跑 |
-
-外加 `redlines.md`(R1–R8 禁止事项)与 `references/ai-crawlers.yaml`(C1 检查的 AI 爬虫 UA 清单)。
-
-## 为什么这么设计
-
-**C 集与 T 集分开** — 机器可读结构里有一部分只有写内容的人写得出来(图片 alt、llms.txt
-摘要、ymyl 判定),那部分单独立为 T 集。好处是**责任可回溯**:C 项红了,顺着「下游」列
-反查到对应的 T,立刻知道是 content 欠供还是 frontend 没落,两个团队不用吵谁该干什么。
-
-**三态判定** `pass / fail / N.A.(reason)` — 「没测」和「没事」不许混成一个绿。
-报告分母恒定:每次都是同样 26 行,不因为某项测不了就少一行。
-
-**纯 deterministic,零 LLM** — 抓取 → 解析 → 阈值比较 → 拼 markdown。同站同配置两次跑
-逐字相同。这是它能当验收依据、能拿去跟施工方争议的全部理由。
-
-**爬虫视角** — 不存 cookie、不发 `Accept-Language`。Googlebot 每次抓页都是无状态首访;
-复用 cookie 会让 checker 表现得像个「浏览过一遍的用户」,测的就不是爬虫看到的东西了。
+1. clone 到你加载 skill 的位置,目录名用 seo-ops
+   (Claude Code:~/.claude/skills/ 或 <repo>/.claude/skills/;Codex:~/.codex/skills/)
+2. 整个仓库一起装,不要只拷 SKILL.md —— scripts/ 与 references/ 都是运行期依赖
+3. 装依赖:python3 -c "import requests, yaml" || pip install -r <skill>/scripts/requirements.txt
+4. 冒烟:python3 <skill>/scripts/run.py --verify-only,应输出「✅ 清单与脚本对齐」
+5. 读一遍 SKILL.md,然后告诉我它能查什么、不查什么
+````
