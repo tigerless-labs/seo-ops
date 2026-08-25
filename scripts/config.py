@@ -3,7 +3,7 @@
 原则:判定逻辑住 run.py,判定参数住本文件;改阈值/清单只动这里,人审后合并。
 **机密不进本文件** — API key 一类住 `<config_dir>/.env`(默认 ~/.config/seo-ops/),模板见 `.env.example`。
 C4(CWV)无数据时 checker 输出 no-data(N.A.),不判红——阈值本身是 Google 官方常量。
-C 编号对应 checklist/checklist.md(2026-08-24 重排后)。
+C 编号对应 references/checklist/checklist.md(2026-08-24 重排后)。
 """
 import os
 from pathlib import Path
@@ -28,18 +28,20 @@ def _config_base():
 
 
 def state_dir(override=None):
-    """花名册与产出住哪。--state-dir > $SEO_OPS_DIR > <文档目录>/seo-ops(见 _documents_dir)
+    """**产出**住哪(报告与 checks.db)。--state-dir > $SEO_OPS_DIR > <文档目录>/seo-ops
 
     **不住包内**:这份 checker 会被复制进 skill 目录,而 skill 更新 = 整包覆盖,
     包内的可写状态必然随更新丢失(checks.db 尤其可惜,它设计成跨次累积好做 diff)。
 
-    **也不住 cwd 或某个项目里**:sites.yaml 是一份**站点**花名册,checks.db 是**站点**
-    的历史 —— 它们属于「你负责哪些站」,不属于「你此刻在哪个代码仓库里」。同一批站
-    从三个仓库验收,不该得到三份割裂的历史。所以是 per-user 的一个固定位置。
+    **也不住 cwd 或某个项目里**:checks.db 是**站点**的历史,属于「你负责哪些站」,
+    不属于「你此刻在哪个代码仓库里」。同一批站从三个仓库验收,不该得到三份割裂的历史。
 
     落在 ~/Documents 是刻意的:报告是**给人读、要拿去跟施工方对账**的产出,
     该待在用户找得到的地方,不是藏在 dotfile 里(同 last30days 的 MEMORY_DIR 约定)。
-    机密不在这儿 —— 见 config_dir()。
+
+    **配置不在这儿** —— `sites.yaml` 与 `.env` 都归 config_dir()。分界是
+    「配置 / 产出」,不是「敏感 / 不敏感」:花名册不是机密,但它是你**输入**给工具的
+    东西,跟工具**吐出来**的报告是两回事,混在一个目录里迟早分不清哪个能删。
 
     附带好处:不依赖任何 agent 私有变量,所以 Claude Code / Codex / 裸命令行行为一致。
     """
@@ -68,12 +70,15 @@ def state_dir(override=None):
 
 
 def config_dir():
-    """机密住哪。$SEO_OPS_CONFIG_DIR > ${XDG_CONFIG_HOME:-~/.config}/seo-ops
+    """**配置**住哪(sites.yaml 与 .env)。$SEO_OPS_CONFIG_DIR > ${XDG_CONFIG_HOME:-~/.config}/seo-ops
 
-    **与 state_dir 分开是有意的。** 产出放 ~/Documents 是为了让人找得到,但正因为
-    Documents 常被 iCloud / OneDrive / Dropbox 同步、被备份、被整个文件夹分享出去,
-    API key 不能跟着走。~/.config 不进这些通道。(同 last30days:产出进 Documents,
-    key 进 ~/.config/last30days/.env。)
+    **与 state_dir 分开是有意的**,两条理由叠在一起:
+
+    1. 配置是**输入**,报告是**输出** —— 混一个目录里迟早分不清哪个能删。
+    2. 产出放 ~/Documents 是为了让人找得到,但 Documents 常被 iCloud / OneDrive /
+       Dropbox 同步、被备份、被整夹分享出去,API key 不能跟着走。~/.config 不进这些通道。
+
+    (同 last30days:产出进 Documents,key 进 ~/.config/last30days/.env。)
     """
     if os.environ.get("SEO_OPS_CONFIG_DIR"):
         return Path(os.environ["SEO_OPS_CONFIG_DIR"]).expanduser().resolve()
@@ -84,7 +89,7 @@ def load_env(d=None):
 
       1. <config_dir>/.env      —— 正位(默认 ~/.config/seo-ops/.env)
       2. <state_dir>/.env       —— 旧布局,告警
-      3. 包内 checker/.env      —— 更旧的布局,告警
+      3. 包内 scripts/.env       —— 更旧的布局,告警
 
     `setdefault` 而非赋值:**已 export 的环境变量永远赢过所有文件** —— CI 里注入 key
     不该被谁的本地 .env 盖掉。

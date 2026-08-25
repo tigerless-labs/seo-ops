@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""checker — 手动运行的检查脚本。用法与判定说明见仓库根 CLAUDE.md。
+"""checker — 手动运行的检查脚本。用法与判定说明见 skill 根目录的 SKILL.md。
 
-条目定义住 checklist/checklist.md(**唯一真相**),本脚本实现其机器项
+条目定义住 references/checklist/checklist.md(**唯一真相**),本脚本实现其机器项
 C1–C20、C23–C26;C21/C22 为人审项,报表列出不判。
 两份靠 verify_checklist_sync() 每次启动对齐 —— 检查逻辑无法自动生成(每条手写),
 但「有哪些条目、什么优先级、在哪一节」必须对得上,对不上就在 stdout 喊。
 
-  python3 checker/run.py                       # config.TARGET 为空 → 按 sites.yaml 全部站点跑
-  python3 checker/run.py --site tigerless-com  # 只跑 sites.yaml 里的一个站
-  python3 checker/run.py --target http://localhost:3000   # 单站覆盖(本地模式自动判定)
+  python3 scripts/run.py                       # config.TARGET 为空 → 按 sites.yaml 全部站点跑
+  python3 scripts/run.py --site tigerless-com  # 只跑 sites.yaml 里的一个站
+  python3 scripts/run.py --target http://localhost:3000   # 单站覆盖(本地模式自动判定)
 
 不往包内写任何东西(这份 checker 会被复制进 skill,skill 更新 = 整包覆盖)。两处外部目录:
-  <state-dir>  默认 ~/Documents/seo-ops   —— 花名册与产出,给人读的东西
+  <config-dir> 默认 ~/.config/seo-ops     —— 配置(你输入给工具的)
     ├── sites.yaml                        — 站点花名册(多站才需要)
-    └── out/report-<site>-<date>.md       — 与 checklist 同构的表单(三节;结果 + 证据)
-        out/checks.db                     — checks 快照(SQLite,schema 见 CLAUDE.md)
-  <config-dir> 默认 ~/.config/seo-ops     —— 机密,单独放
     └── .env                              — API key(已 export 的环境变量优先)
-  Documents 常被云同步/备份/整夹分享,所以 key 不跟产出同住。
+  <state-dir>  默认 ~/Documents/seo-ops   —— 产出(工具吐出来的),给人读
+    └── out/report-<site>-<date>.md       — 与 checklist 同构的表单(三节;结果 + 证据)
+        out/checks.db                     — checks 快照(SQLite,schema 见 SKILL.md)
+  分界是「配置 / 产出」;另外 Documents 常被云同步,key 也就不该待在那边。
 
 三条不变量:
   1. **三态判定** pass / fail / N.A.(reason) —— 「没测」和「没事」不许混成一个绿。
@@ -42,17 +42,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as CFG
 
 def _resolve_paths():
-    """定位三份数据文件,兼容两种布局 —— 这份脚本既可能住在本仓库根下,也可能被塞进
-    别的仓库当子目录用。路径写死就会分叉成两个副本,分叉了就必然有一份先烂掉。
-      本仓库    :  checker/run.py  +  checklist/checklist.md
-      嵌在别处:  <any>/checker/run.py  +  <any>/checklist/checklist.md
+    """定位数据根 —— 即**含有 checklist/checklist.md 的那个目录**,`ai-crawlers.yaml` 与
+    `sites.example.yaml` 也在它下面。
+
+    为什么要探测而不是写死:这份脚本经历过三种布局(大仓库里的 tools/check、
+    独立仓库根、现在的 skill 规范 scripts/ + references/),而脚本自身位置与数据位置
+    的相对关系每次都不同。写死一条就得在每次搬家时改代码,漏改一处就是运行期崩。
+      skill 规范:  scripts/run.py       +  references/checklist/checklist.md
+      独立仓库  :  checker/run.py       +  checklist/checklist.md
+      大仓库    :  tools/check/run.py   +  docs/checklist/checklist.md
     """
     here = Path(__file__).resolve()
-    for root in (here.parents[2], here.parents[1]):
-        for sub in ("docs/checklist/checklist.md", "checklist/checklist.md"):
-            if (root / sub).exists():
-                return root, root / sub
-    return here.parents[2], here.parents[2] / "docs" / "checklist" / "checklist.md"
+    cands = (here.parents[1] / "references",      # skill 规范(当前)
+             here.parents[1],                     # 独立仓库根
+             here.parents[2] / "docs",            # 大仓库
+             here.parents[2])
+    for root in cands:
+        md = root / "checklist" / "checklist.md"
+        if md.exists():
+            return root, md
+    return cands[0], cands[0] / "checklist" / "checklist.md"
 
 ROOT, CHECKLIST_MD = _resolve_paths()
 NOW = datetime.now(timezone.utc)
@@ -985,7 +994,7 @@ CHECKS = [
 ICON = {PASS: "✅ pass", FAIL: "🔴 fail", NA: "⚪ N.A.", HUMAN: "👤 人审"}
 
 def verify_checklist_sync():
-    """漂移守卫:CHECKS(报告骨架)必须与 checklist/checklist.md 的条目一致。
+    """漂移守卫:CHECKS(报告骨架)必须与 references/checklist/checklist.md 的条目一致。
     检查逻辑无法自动生成(每条手写),但「有哪些条目、什么优先级、在哪一节」必须对得上;
     对不上就喊出来,不让报告默默说谎。
 
@@ -1026,7 +1035,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
              f"({'全量' if args.page_sample == 0 else f'抽样上限 {args.page_sample}'})"
              f" · sitemap 抽查 {args.sitemap_sample} · 内链爬取上限 {args.max_pages}"
              f" · 并发 {args.workers} × 间隔 {args.sleep}s",
-             f"- 判定参数:checker/config.py;条目定义:checklist/checklist.md", ""]
+             f"- 判定参数:scripts/config.py;条目定义:references/checklist/checklist.md", ""]
     if getattr(R, "throttled_total", 0):
         lines += [f"- 🚦 **被目标限流 {R.throttled_total} 次(429/503),其中页面样本 "
                   f"{getattr(R, 'thr_pages', 0)} 页**——受影响的判定已记 N.A. 而非 fail"
@@ -1080,19 +1089,22 @@ def save_db(db_path, site_id, R):
 # ───────────────────────── main ─────────────────────────
 
 def sites_file(override=None):
-    """找站点花名册。<state_dir>/sites.yaml 为准,包内 sites.yaml 是旧布局的兼容回退。
+    """找站点花名册。<config_dir>/sites.yaml 为准 —— 它是**配置**,跟 .env 同住;
+    <state_dir>/ 与包内是旧布局的兼容回退。
 
     找不到时不静默跑空 —— 直接退出并把该建在哪、照谁抄说清楚。
     「配置缺失」是使用者的问题,不是脚本该猜的东西。
     """
-    sd = CFG.state_dir(override)
-    for f in (sd / "sites.yaml", ROOT / "sites.yaml"):
+    cd, sd = CFG.config_dir(), CFG.state_dir(override)
+    for f in (cd / "sites.yaml", sd / "sites.yaml", ROOT / "sites.yaml"):
         if f.exists():
+            if f != cd / "sites.yaml":
+                print(f"⚠️  用了 {f} —— 花名册是配置,请移到 {cd / 'sites.yaml'}", flush=True)
             return f
     sys.exit(
         f"没找到 sites.yaml。多站要先建一份站点花名册:\n"
-        f"  mkdir -p {sd}\n"
-        f"  cp {ROOT / 'sites.example.yaml'} {sd / 'sites.yaml'}\n"
+        f"  mkdir -p {cd}\n"
+        f"  cp {ROOT / 'sites.example.yaml'} {cd / 'sites.yaml'}\n"
         f"然后按注释改成自己的站。只跑单个站不需要本文件:--target https://example.com"
     )
 
@@ -1128,7 +1140,7 @@ def main():
     ap.add_argument("--workers", type=int, default=CFG.FETCH_CONCURRENCY,
                     help="并发抓取线程数;1 = 顺序执行(对拍用)")
     ap.add_argument("--state-dir", default=None,
-                    help="花名册与产出目录;默认 ~/Documents/seo-ops,也可用 $SEO_OPS_DIR")
+                    help="产出目录;默认 ~/Documents/seo-ops,也可用 $SEO_OPS_DIR")
     ap.add_argument("--out", default=None, help="报告与 checks.db 落在哪;默认 <state-dir>/out")
     ap.add_argument("--verify-only", action="store_true",
                     help="只跑漂移守卫(清单 vs 脚本),不联网;有漂移则以 1 退出。CI 用")

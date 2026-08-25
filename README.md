@@ -12,7 +12,7 @@
 
 ```bash
 git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
-pip install -r ~/.claude/skills/seo-ops/checker/requirements.txt
+pip install -r ~/.claude/skills/seo-ops/scripts/requirements.txt
 ```
 
 Claude Code 个人级用 `~/.claude/skills/`、项目级用 `<repo>/.claude/skills/`;
@@ -27,8 +27,8 @@ Codex 用 `~/.codex/skills/` 或 `.codex/skills/`;别家 agent 按自己的约�
 
 命令行、配置项、报告怎么读,agent 从 `SKILL.md` 自己查,不用你记。
 
-产出落 **`~/Documents/seo-ops/out/`**,API key 在 `~/.config/seo-ops/.env` —— 都在
-skill 目录外,所以更新时原地不动,也不可能被误提交。
+配置(花名册 + API key)在 **`~/.config/seo-ops/`**,产出在 **`~/Documents/seo-ops/out/`**
+—— 都在 skill 目录外,所以更新时原地不动,也不可能被误提交。
 
 ## content 团队怎么用
 
@@ -37,7 +37,7 @@ skill 目录外,所以更新时原地不动,也不可能被误提交。
 装法同上,然后说一句:**「用 seo-ops 检查这份页面 doc 的 SEO 供给项」**,把文档给它。
 它按 T 集逐条列出缺什么、怎么补,你照着补。就这些。
 
-清单本体是 [content/content-checklist.md](content/content-checklist.md),想自己读也行
+清单本体是 [references/content/content-checklist.md](references/content/content-checklist.md),想自己读也行
 —— 每条都有一篇「要交什么、什么样算合格」的详细说明。
 
 ---
@@ -51,11 +51,11 @@ skill 目录外,所以更新时原地不动,也不可能被误提交。
 
 | 路径 | 是什么 | 给谁 |
 |---|---|---|
-| `checklist/checklist.md` | **C 集** — 26 条结构检查,每条一篇详细说明 + 权威依据 | 工程团队 |
-| `content/content-checklist.md` | **T 集** — SEO 所需信息的供给清单,每条标注它喂的下游 C 项 | **content / 设计团队** |
-| `checker/run.py` | 跑 C 集的机器项,输出与 checklist 同构的报告 | 谁验收谁跑 |
+| `references/checklist/checklist.md` | **C 集** — 26 条结构检查,每条一篇详细说明 + 权威依据 | 工程团队 |
+| `references/content/content-checklist.md` | **T 集** — SEO 所需信息的供给清单,每条标注它喂的下游 C 项 | **content / 设计团队** |
+| `scripts/run.py` | 跑 C 集的机器项,输出与 checklist 同构的报告 | 谁验收谁跑 |
 
-外加 `redlines.md`(R1–R8 禁止事项)与 `ai-crawlers.yaml`(C1 检查的 AI 爬虫 UA 清单)。
+外加 `redlines.md`(R1–R8 禁止事项)与 `references/ai-crawlers.yaml`(C1 检查的 AI 爬虫 UA 清单)。
 
 ## 为什么这么设计
 

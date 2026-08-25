@@ -15,7 +15,7 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 - **content / 设计**:只过 **T 集**(供给清单)—— **不跑脚本、不读 C 集**,
   那 26 条是工程侧的活,由 checker 自动验。见「给 content 团队开交付单」。
 
-**首次跑 checker**:`pip install -r checker/requirements.txt`(只要 requests 和 PyYAML)。
+**首次跑 checker**:`pip install -r scripts/requirements.txt`(只要 requests 和 PyYAML)。
 
 ## 覆盖范围
 
@@ -33,47 +33,70 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 
 ## 这里有什么
 
-路径都相对本 skill 根目录:
+skill 本体(只读,更新时整包覆盖 —— **一个字节都别往里写**):
 
-| 路径 | 是什么 | 什么时候读 |
-|---|---|---|
-| [checklist/checklist.md](checklist/checklist.md) | **C 集**:26 条结构检查,分站级 / 每收录页 / 条件项 | 要知道查哪些项、优先级多少 |
-| `checklist/references/C<N>.md` | 每条 C 的详细说明:判定标准、常见错法、权威依据 | 某条 C 红了、或要给工程解释「到底要什么」 |
-| [content/content-checklist.md](content/content-checklist.md) | **T 集**:SEO 所需信息的供给清单,每条标注它喂的下游 C 项 | 要给 content / 设计团队开交付单 |
-| `content/references/T<N>.md` | 每条 T 的详细说明:要交什么、什么样算合格 | 具体写某条素材时 |
-| [checker/run.py](checker/run.py) | 跑 C 集机器项,出报告 | 验收时 |
-| [redlines.md](redlines.md) | **R 集**:R1–R8 禁止事项(人闸,不是机器检查) | 动内容策略、动链接、动结构化数据之前 |
-| [ai-crawlers.yaml](ai-crawlers.yaml) | C1 检查的 AI 爬虫 UA 清单 | 要增删被检查的 AI 爬虫时 |
+```
+<skill>/
+├── SKILL.md                     本文件
+├── README.md                    给人读的介绍
+├── redlines.md                  R 集:R1–R8 禁止事项(人闸,不是机器检查)
+├── scripts/
+│   ├── run.py                   跑 C 集机器项,出报告
+│   ├── config.py                判定参数(按 C 号分组)
+│   ├── requirements.txt         requests + PyYAML
+│   └── .env.example             机密模板,复制到 <config-dir>/.env
+└── references/
+    ├── checklist/
+    │   ├── checklist.md         C 集:26 条结构检查,分站级/每收录页/条件项
+    │   └── references/C<N>.md   每条 C 的详细说明:判定标准、常见错法、权威依据
+    ├── content/
+    │   ├── content-checklist.md T 集:SEO 所需信息的供给清单,每条标注下游 C 项
+    │   └── references/T<N>.md   每条 T 的详细说明:要交什么、什么样算合格
+    ├── ai-crawlers.yaml         C1 检查的 AI 爬虫 UA 清单(run.py 运行期读取)
+    └── sites.example.yaml       花名册模板,字段说明就在它的注释里
+```
 
-`<N>` 是条目编号,与清单里的 ID 一一对应:C12 的详情就是 `checklist/references/C12.md`。
-编号有断档是正常的(如无 T11)——退役的号不回收,详见「改清单的时候」。
+`<N>` 是条目编号,与清单里的 ID 一一对应:C12 的详情就是
+`references/checklist/references/C12.md`。编号有断档是正常的(如无 T11)——
+退役的号不回收,详见「改清单的时候」。
+
+## 状态文件都在哪
+
+**skill 目录外,分两处**,按「配置 / 产出」切,不按「敏感 / 不敏感」切:
+
+| 位置 | 装什么 | 谁写的 | 怎么改位置 |
+|---|---|---|---|
+| `~/.config/seo-ops/sites.yaml` | 站点花名册(多站才需要;单站用 `--target`) | 你 | `$SEO_OPS_CONFIG_DIR` |
+| `~/.config/seo-ops/.env` | `CRUX_API_KEY` / `INDEXNOW_KEYS` | 你 | 同上 |
+| `~/Documents/seo-ops/out/report-<site>-<date>.md` | 人读的报告,每次同样 26 行 | 脚本 | `--state-dir` / `--out` / `$SEO_OPS_DIR` |
+| `~/Documents/seo-ops/out/checks.db` | 机读快照,跨次累积可 diff | 脚本 | 同上 |
+
+**优先级**:`--state-dir` > `$SEO_OPS_DIR` > `~/Documents/seo-ops`;
+配置侧是 `$SEO_OPS_CONFIG_DIR` > `${XDG_CONFIG_HOME:-~/.config}/seo-ops`。
+**已 export 的环境变量永远赢过 `.env` 文件** —— CI 注入 key 不会被谁的本地文件盖掉。
+
+**为什么这么放**:
+
+- **配置 vs 产出** —— 花名册不是机密,但它是你**输入**给工具的,跟工具**吐出来**的
+  报告是两回事;混一个目录里迟早分不清哪个能删。
+- **报告进 `~/Documents`** —— 要给人读、要拿去跟施工方对账,该待在找得到的地方,
+  不是藏在 dotfile 里。而 Documents 常被 iCloud/OneDrive/Dropbox 同步、被备份、
+  被整夹分享,所以 key 更不该待在那边。(同 last30days 的约定。)
+- **都不跟当前项目走** —— `checks.db` 是**站点**的历史,属于「你负责哪些站」,
+  不属于「你此刻在哪个仓库里」;同一批站从三个仓库验收不该得到三份割裂的历史。
+  固定位置也不依赖 cwd 或任何 agent 私有变量,Claude Code / Codex / 裸命令行行为一致。
+
+**旧位置仍能读**(`<state-dir>/sites.yaml`、`<state-dir>/.env`、`scripts/.env`),
+但真从它们取到值时会打告警提醒搬走 —— 静默的错位配置会让同一条命令给出不同结论。
 
 ## 跑 checker
 
-**包内零写入。** `run.py` 靠相对路径找 `checklist/checklist.md` 与 `ai-crawlers.yaml`
-(所以要在仓库根跑),产出与机密都在包外,而且分两处:
-
-```
-~/Documents/seo-ops/       # 花名册与产出($SEO_OPS_DIR 或 --state-dir 可改)
-├── sites.yaml             #   多站才需要;单站用 --target
-└── out/                   #   report-<site>-<date>.md 与 checks.db
-
-~/.config/seo-ops/         # 机密($SEO_OPS_CONFIG_DIR 可改)
-└── .env                   #   CRUX_API_KEY / INDEXNOW_KEYS
+```bash
+pip install -r scripts/requirements.txt      # 首次;只要 requests 和 PyYAML
+python3 scripts/run.py --target https://example.com
 ```
 
-**为什么分两处**:报告要给人读、要拿去跟施工方对账,该待在 `~/Documents` 这种找得到的
-地方;但正因为 Documents 常被 iCloud/OneDrive/Dropbox 同步、被备份、被整夹分享,
-API key 不能跟着走 —— 机密进 `~/.config`。这跟 last30days 的约定一致。
-
-**为什么不放当前项目里**:`sites.yaml` 是一份**站点**花名册、`checks.db` 是**站点**的历史,
-属于「你负责哪些站」,不属于「你此刻在哪个仓库里」。同一批站从三个仓库验收,不该得到
-三份割裂的历史。所以是 per-user 的固定位置,不依赖 cwd、也不依赖任何 agent 私有变量
-——Claude Code / Codex / 裸命令行行为一致。
-
-**不要往本目录里写任何东西** —— 装成 skill 后,更新可能是整包覆盖(或 `git pull`),
-写进去的随时会没。旧位置(包内 `checker/.env`、`<state-dir>/.env`)仍能读,
-但真取到值时会打告警提醒搬走。
+产出与配置的落点见上一节「状态文件都在哪」。**skill 目录零写入。**
 
 **一个「站」= 一个 origin**(scheme + host[:port],不带 path/query)。子域名算独立的站
 (`blog.` / `docs.` 各算一个);裸域与 www 不算两个 —— 它们该归一到同一个 canonical host,
@@ -82,8 +105,8 @@ API key 不能跟着走 —— 机密进 `~/.config`。这跟 last30days 的约�
 ### 单站:不需要任何配置文件
 
 ```bash
-python3 checker/run.py --target https://example.com      # 线上站
-python3 checker/run.py --target http://localhost:3000    # 本地部署,自动判定为本地模式
+python3 scripts/run.py --target https://example.com      # 线上站
+python3 scripts/run.py --target http://localhost:3000    # 本地部署,自动判定为本地模式
 ```
 
 `--target` 必须是 origin,传带 path/query 的 URL 会直接报错退出,不猜。
@@ -97,9 +120,9 @@ python3 checker/run.py --target http://localhost:3000    # 本地部署,自动�
 不想每次手敲 `--target`,也想让每个站各带自己的渲染策略与必测页。这时才需要 `sites.yaml`:
 
 ```bash
-mkdir -p ~/Documents/seo-ops && cp sites.example.yaml ~/Documents/seo-ops/sites.yaml
-python3 checker/run.py               # 跑花名册里全部站
-python3 checker/run.py --site <id>   # 只跑其中一个
+mkdir -p ~/.config/seo-ops && cp references/sites.example.yaml ~/.config/seo-ops/sites.yaml
+python3 scripts/run.py               # 跑花名册里全部站
+python3 scripts/run.py --site <id>   # 只跑其中一个
 ```
 
 找不到花名册时脚本会直接退出并把该建在哪、照谁抄打出来,不会静默跑空。
@@ -107,15 +130,15 @@ python3 checker/run.py --site <id>   # 只跑其中一个
 每条记录填:`id`(报告文件名与 `checks` 表的 site 列用它)、`production`(origin,必填)、
 `rendering`(ssr/ssg/isr,C15 按此分支)、`sitemap`(默认 `<production>/sitemap.xml`)、
 `samples`(sitemap 之外额外加抓的必测页,标 `ymyl: true` 触发 C21 人审)。
-字段说明见 [sites.example.yaml](sites.example.yaml) 的注释。
+字段说明见 [references/sites.example.yaml](references/sites.example.yaml) 的注释。
 
-花名册与产出都在仓库外,所以 `git pull` 更新时它们原地不动,也不可能被误提交
+花名册在 skill 目录外,所以更新(`git pull` 或整包覆盖)时原地不动,也不可能被误提交
 —— 版本库里只有 `sites.example.yaml` 模板。
 
 ### 通用参数
 
 临时覆盖:`--page-sample N` `--sitemap-sample N` `--max-pages N` `--sleep S` `--workers N`。
-位置覆盖:`--state-dir <path>`、`--out <path>`;或 `$SEO_OPS_DIR` / `$SEO_OPS_CONFIG_DIR`。
+位置覆盖:产出用 `--state-dir` / `--out` 或 `$SEO_OPS_DIR`;配置用 `$SEO_OPS_CONFIG_DIR`。
 
 `--verify-only`:只跑漂移守卫(清单 vs 脚本),不联网,有漂移以 1 退出 —— CI 用的入口。
 
@@ -160,8 +183,8 @@ python3 checker/run.py --site <id>   # 只跑其中一个
 
 T 集分三节:**站级**(T1–T2,一次性 + 低频维护)、**每页必交**(T3–T10、T14,
 页面 doc 顶部的「SEO 头部块」)、**条件项**(T12–T13,按 flag 或页面内容触发)。
-索引在 [content/content-checklist.md](content/content-checklist.md),每条详情住
-`content/references/T<N>.md`。
+索引在 [references/content/content-checklist.md](references/content/content-checklist.md),每条详情住
+`references/content/references/T<N>.md`。
 
 **定位 = 补集**:常规页面 doc、layout 设计、URL 照旧交付,不重复审;只管常规 doc
 通常不覆盖的 SEO 供给项。三态照实记 —— 条件项不触发记 N.A. 并写明为什么,别记 pass。
@@ -186,7 +209,7 @@ alt 文案有(只有看过图的人写得出)→ T14;`og:type` 没有(模板看�
 
 ## 配置
 
-判定参数全在 [checker/config.py](checker/config.py),按 C 号分组。改阈值只动这里,判定逻辑住 `run.py`。
+判定参数全在 [scripts/config.py](scripts/config.py),按 C 号分组。改阈值只动这里,判定逻辑住 `scripts/run.py`。
 
 常调的:
 
@@ -199,10 +222,10 @@ alt 文案有(只有看过图的人写得出)→ T14;`og:type` 没有(模板看�
 | `TYPE_REQUIRED` | C12 各 JSON-LD 类型的必填字段 |
 | `LD_REJECTED_TYPES` | C12 负向扫描:不采纳的类型及理由 |
 | `BODY_HIDE_PATTERNS` | C14 第三方脚本黑名单(新工具在此追加) |
-| `ai-crawlers.yaml` | C1 检查的 AI 爬虫 UA 清单 |
+| `references/ai-crawlers.yaml` | C1 检查的 AI 爬虫 UA 清单 |
 
 **机密不进 config.py**:`CRUX_API_KEY`(C4)与 `INDEXNOW_KEYS`(C5)住
-`~/.config/seo-ops/.env`,模板见 `checker/.env.example`。不填就相应条目记 N.A.,不判红。
+`~/.config/seo-ops/.env`,模板见 `scripts/.env.example`。不填就相应条目记 N.A.,不判红。
 已 export 的环境变量优先于文件 —— CI 注入 key 不会被谁的本地 .env 盖掉。
 
 ## 改清单的时候
@@ -210,7 +233,7 @@ alt 文案有(只有看过图的人写得出)→ T14;`og:type` 没有(模板看�
 **checklist 与脚本是两份,各自维护**——检查逻辑没法从表格自动生成。但条目集合可以对齐:
 每次启动会跑 `verify_checklist_sync()`,「有哪些条目、什么优先级、在哪一节」对不上就在 stdout 打 ⚠️。
 
-**加条目的顺序:先改 checklist.md,再改 run.py 的 `CHECKS` 和判定逻辑。**
+**加条目的顺序:先改 `references/checklist/checklist.md`,再改 `scripts/run.py` 的 `CHECKS` 和判定逻辑。**
 编号是永久 ID,只顺延、不回收、不重排。
 
 **这里只有一份正本,没有副本要同步。** 早先 `skills/` 下维护过两份拷贝,靠脚本防漂移

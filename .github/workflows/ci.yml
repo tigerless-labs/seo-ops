@@ -24,21 +24,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.9"          # 文档承诺的下限,CI 就按下限跑
-      - run: pip install -r checker/requirements.txt
+      - run: pip install -r scripts/requirements.txt
 
       # ── 不联网的守卫 ─────────────────────────────────────
       - name: 语法
-        run: python -m compileall -q checker
+        run: python -m compileall -q scripts
 
       - name: 清单与脚本对齐(C 集条目/优先级/所属节)
-        run: python checker/run.py --verify-only
+        run: python scripts/run.py --verify-only
 
       # ── 目录解析:两个默认位置必须落在 home 下,且彼此分开 ──
       - name: 默认目录解析(两处必须分开)
         run: |
           python - <<'PY'
           import sys, pathlib
-          sys.path.insert(0, "checker")
+          sys.path.insert(0, "scripts")
           import config as c
           state, cfg, home = c.state_dir(), c.config_dir(), pathlib.Path.home()
           print("state_dir :", state)
@@ -53,7 +53,7 @@ jobs:
       - name: 占位符守卫(别家 agent 抄了 ${...} 必须报错,不能静默落错地方)
         run: |
           set +e
-          python checker/run.py --state-dir '${CLAUDE_PROJECT_DIR}/.seo-ops' \
+          python scripts/run.py --state-dir '${CLAUDE_PROJECT_DIR}/.seo-ops' \
             --target http://127.0.0.1:9 >/dev/null 2>&1
           test $? -eq 1 || { echo "::error::未被替换的变量没有被拦下"; exit 1; }
           echo "✅ 守卫生效"
@@ -79,7 +79,7 @@ jobs:
           for i in $(seq 20); do curl -sf http://127.0.0.1:8000/ >/dev/null && break; sleep 0.5; done
 
           # 显式 --state-dir:CI 要的是可断言的落点,不是用户默认位置
-          python checker/run.py --target http://127.0.0.1:8000 \
+          python scripts/run.py --target http://127.0.0.1:8000 \
             --state-dir "$OUT" --page-sample 2 --max-pages 2 --sleep 0 | tee "$LOG"
 
           grep -q "⚠️  漂移" "$LOG" && { echo "::error::检测到漂移"; exit 1; }
