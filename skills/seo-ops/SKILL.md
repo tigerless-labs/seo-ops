@@ -2,6 +2,7 @@
 name: seo-ops
 description: SEO 基础工程的结构检查清单(C 集,26 条)与 checker 脚本。当需要审查或验收一个网站/页面的 SEO/GEO 结构合规——robots、sitemap、canonical、归一 301、JSON-LD、OG、hreflang、CWV、AI 爬虫放行、渲染策略——要跑机器检查出一份报告,或要判断某个前端改动会不会影响收录与被引用时使用。也用于回答「这条检查到底要什么」「为什么要有它」。
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/checker/run.py *)
+compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the target site
 ---
 
 # seo-ops · SEO 基础工程结构检查
@@ -20,35 +21,35 @@ allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/checker/run.py *)
 
 ## 跑 checker
 
+`<skill>` = 本 SKILL.md 所在目录的绝对路径。
+
 ```bash
-pip install -r ${CLAUDE_SKILL_DIR}/checker/requirements.txt      # 首次;只要 requests 和 PyYAML
-python3 ${CLAUDE_SKILL_DIR}/checker/run.py \
-  --state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops \
-  --target https://example.com
+pip install -r <skill>/checker/requirements.txt      # 首次;只要 requests 和 PyYAML
+python3 <skill>/checker/run.py --target https://example.com
 ```
 
-**每次都要带上 `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops`。** 这两个 `${...}` 是 Claude Code
-在读这份 SKILL.md 时做的**字符串替换**,展开成真实路径后才进 shell —— 它们**不是**你能在
-bash 里读到的环境变量(Bash 工具的 shell 里没有 `CLAUDE_PROJECT_DIR`)。不传的话脚本只能
-退到 cwd,而 cwd 会随 `cd` 漂移,同一个项目的报告可能落到两个地方去。
-
-**脚本住 skill 里,状态住项目里** —— 报告、`sites.yaml`、API key 全部落在
-`${CLAUDE_PROJECT_DIR}/.seo-ops/`,与 skill 装在哪无关。`${CLAUDE_PROJECT_DIR}` 是
-**session 启动时的项目根**,不随 `cd` 变、进 worktree 也仍指主 checkout,所以它是个稳定锚点。
-**不要往 skill 目录里写任何东西**,skill 更新是整包覆盖,写进去的必丢。
+**不要往 skill 目录里写任何东西** —— skill 更新是整包覆盖,写进去的必丢。
+脚本自己也不写:产出与机密各有固定去处,与 skill 装在哪、你在哪个目录跑都无关。
 
 ```
-${CLAUDE_PROJECT_DIR}/.seo-ops/
-├── sites.yaml            # 多站花名册;单站用 --target,不需要本文件
-├── .env                  # CRUX_API_KEY / INDEXNOW_KEYS;已 export 的环境变量优先
+~/Documents/seo-ops/          # 产出与花名册($SEO_OPS_DIR 或 --state-dir 可改)
+├── sites.yaml                #   多站花名册;单站用 --target,不需要本文件
 └── out/
     ├── report-<site>-<date>.md    # 人读,与 checklist 一一对应,每次都是同样 26 行
     └── checks.db                  # 机读,SQLite,跨次累积可做 diff
+
+~/.config/seo-ops/            # 机密($SEO_OPS_CONFIG_DIR 可改)
+└── .env                      #   CRUX_API_KEY / INDEXNOW_KEYS;已 export 的环境变量优先
 ```
 
-`checks(site, url, rule_id, status, evidence, checked_at)`,主键 `(site, url, rule_id)`。
+**机密单独放**是因为 `~/Documents` 常被 iCloud / OneDrive / Dropbox 同步、被备份、
+被整个文件夹分享出去 —— 报告该待在人找得到的地方,key 不该跟着走。
 
-**建议把 `.seo-ops/` 加进该项目的 `.gitignore`** —— 报告与花名册是本地状态,不该进对方版本库。
+报告放 Documents 而不是当前项目里,也是有意的:`sites.yaml` 是一份**站点**花名册、
+`checks.db` 是**站点**的历史,它们属于「你负责哪些站」,不属于「你此刻在哪个仓库里」。
+同一批站从三个仓库验收,不该得到三份割裂的历史。
+
+`checks(site, url, rule_id, status, evidence, checked_at)`,主键 `(site, url, rule_id)`。
 
 ### 常用参数
 
@@ -58,7 +59,7 @@ ${CLAUDE_PROJECT_DIR}/.seo-ops/
 | `--site <id>` / 不传 | 按 `<state-dir>/sites.yaml` 跑其中一个 / 全部 |
 | `--page-sample N` | 页级检查抽样上限;`0` = 全量。271 页的站全量约 7 分钟,想快用 `--page-sample 100` |
 | `--sleep S` / `--workers N` | 节流。整体 QPS ≈ workers / sleep,默认 1 / 1 |
-| `--state-dir <path>` | 状态目录。**skill 用法下必传**(见上);也可用 `$SEO_OPS_DIR` |
+| `--state-dir <path>` | 花名册与产出目录,默认 `~/Documents/seo-ops`;也可用 `$SEO_OPS_DIR` |
 
 **先看报告顶部的告警行**,有就说明这次结论不完整:🚦 被目标限流(429/503)= 我们打太快,
 受影响的判定已记 N.A. 不记 fail,**假红比跑得慢危险** —— `--workers` 减半或调大 `--sleep`

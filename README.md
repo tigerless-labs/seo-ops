@@ -23,8 +23,20 @@ cd seo-ops && pip install -r checker/requirements.txt
 
 命令行、配置项、报告怎么读,agent 会从 `CLAUDE.md` 自己查,不用你记。
 
-报告落在 `.seo-ops/out/`。这个目录连同 `.env` 都在 `.gitignore` 里 —— 更新直接 `git pull`,
-你的花名册、API key、历史报告原地不动。
+报告落在 **`~/Documents/seo-ops/out/`**,API key 在 `~/.config/seo-ops/.env` —— 都在仓库外,
+所以 `git pull` 更新时原地不动,也不可能被误提交。
+
+## content 团队怎么用
+
+**你只需要过一份清单:T 集。** 不用跑脚本,不用读 C 集(那是工程侧的活)。
+
+1. 把 [skills/seo-content](skills/seo-content) 整个目录给你的 agent(Claude Code 放
+   `.claude/skills/`,Codex 放 `.codex/skills/`)
+2. 说一句:**「用 seo-content 检查这份页面 doc」**,把文档给它
+3. 它按 T 集逐条列出缺什么、怎么补,你照着补
+
+就这些。清单本体是 [content/content-checklist.md](content/content-checklist.md),
+想自己读也行 —— 每条都有一篇「要交什么、什么样算合格」的详细说明。
 
 ## 装到别的仓库去
 
@@ -36,7 +48,7 @@ cd seo-ops && pip install -r checker/requirements.txt
 | `skills/seo-ops` | 工程:对照 C 集审模板、meta、结构化数据、路由与渲染策略;也带 checker,能就地跑 |
 | `skills/seo-content` | content / 设计:对照 T 集查页面 doc 的 SEO 供给项 |
 
-装进去之后,报告和配置落在**那个项目**的 `.seo-ops/` 下,不在 skill 目录里 ——
+装进去之后报告仍落 `~/Documents/seo-ops/`,不在 skill 目录里 ——
 skill 更新是整包覆盖,状态放里面必丢。
 
 ---

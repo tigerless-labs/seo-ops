@@ -18,33 +18,35 @@ cp -r skills/seo-content ~/.claude/skills/
 ```
 
 `seo-ops` 要跑 checker 的话再装两个依赖:`pip install -r <skill>/checker/requirements.txt`。
+有 CrUX key 就 `mkdir -p ~/.config/seo-ops && cp <skill>/checker/.env.example ~/.config/seo-ops/.env` 填上;不填 C4 记 N.A. 不判红。
 
-## 脚本住 skill,状态住项目
+## 脚本住 skill,产出住包外
 
-这是 Claude Code 官方给的分工,靠两个变量落地:
+skill 目录会被整包覆盖(更新 = 重新复制),所以**里面不许有可写状态**。
+checker 因此一个字节都不往 skill 里写,产出与机密各有固定去处:
 
-| | 变量 | 谁用 |
+| | 默认位置 | 覆盖方式 |
 |---|---|---|
-| 脚本本体 | `${CLAUDE_SKILL_DIR}` | `SKILL.md` 里写运行命令,并在 `allowed-tools` 里写同一路径 —— 两处一致才不弹权限提示 |
-| 实例状态与产出 | `${CLAUDE_PROJECT_DIR}` | `SKILL.md` 的命令里显式传 `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops` |
+| 花名册与产出 | `~/Documents/seo-ops/` | `--state-dir` 或 `$SEO_OPS_DIR` |
+| 机密(API key) | `~/.config/seo-ops/.env` | `$SEO_OPS_CONFIG_DIR` |
 
-**这两个 `${...}` 是字符串替换,不是环境变量。** Claude Code 只在两个地方替换它们:
-SKILL.md 正文、`allowed-tools` frontmatter;另外作为环境变量喂给 hook / stdio MCP server
-等被 spawn 的进程 —— **Bash 工具的 shell 拿不到**。所以路径必须在 markdown 里就写死进命令行,
-指望脚本自己 `os.environ.get("CLAUDE_PROJECT_DIR")` 会落空,退到 cwd,而 cwd 随 `cd` 漂。
+**分两处是有意的**:报告要给人读、要拿去跟施工方对账,该待在找得到的地方;
+但 `~/Documents` 常被 iCloud/OneDrive/Dropbox 同步、被备份、被整夹分享出去,
+API key 不能跟着走。同 last30days 的约定(产出进 Documents,key 进 `~/.config`)。
 
-`${CLAUDE_PROJECT_DIR}` 指 **session 启动时的项目根**:不随 `cd` 变,进 git worktree 也仍指
-主 checkout —— 正因为它不漂,才配当状态的锚点。
+### 为什么不用 `${CLAUDE_PROJECT_DIR}`
 
-**skill 目录里不许有可写状态。** 普通 skill 在 Claude Code 的字符串替换里
-**没有任何「更新后仍存活」的数据目录** —— `${CLAUDE_PLUGIN_DATA}` 只有 plugin skill 能用。
-skill 更新是整包覆盖,写进去的必丢(`checks.db` 尤其可惜,它设计成跨次累积好做 diff)。
+试过,放弃了。它是 **Claude Code 的私有扩展,不在 Agent Skills spec 里**
+——spec 只说「use relative paths from the skill root」,不定义任何路径变量。
+后果是别家 agent(Codex 等)照抄这份 SKILL.md 时不会替换它:原样传进去,
+或被 shell 展开成空串变成 `/.seo-ops`,在容器里以 root 跑会真的建在文件系统根目录。
 
-状态因此跟着**被检查的项目**走,而不是跟着**工具装在哪**走。副作用是同一条命令换个安装
-位置也给同一个结论 —— 反例见 `checker/config.py::load_env` 里那段注释:包内 `.env` 曾让
-同一个站一处出 C4 实测值、一处记 `need-crux-key`。
+固定位置不依赖任何变量,所以 **Claude Code / Codex / 裸命令行行为一致**。
+`state_dir()` 里仍留着两道守卫,专门拦这两种烂法,会直接报错退出而不是静默落错地方。
 
-装进别的项目后,**把 `.seo-ops/` 加进那个项目的 `.gitignore`**。
+顺带:产出也不该跟着「当前项目」走。`sites.yaml` 是一份**站点**花名册、
+`checks.db` 是**站点**的历史,属于「你负责哪些站」,不属于「你此刻在哪个仓库里」
+—— 同一批站从三个仓库验收,不该得到三份割裂的历史。
 
 ## 副本是生成物
 

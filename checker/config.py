@@ -1,40 +1,93 @@
 """checker 参数配置 — 全部可调参数的唯一入口(默认值即阶段一基线)。
 
 原则:判定逻辑住 run.py,判定参数住本文件;改阈值/清单只动这里,人审后合并。
-**机密不进本文件** — API key 一类住 `<state_dir>/.env`(已 gitignore),模板见 `.env.example`。
+**机密不进本文件** — API key 一类住 `<config_dir>/.env`(默认 ~/.config/seo-ops/),模板见 `.env.example`。
 C4(CWV)无数据时 checker 输出 no-data(N.A.),不判红——阈值本身是 Google 官方常量。
 C 编号对应 checklist/checklist.md(2026-08-24 重排后)。
 """
 import os
 from pathlib import Path
 
+def _documents_dir():
+    """用户的「文档」目录。
+
+    macOS 上若开了 iCloud 的「桌面与文稿」同步,~/Documents 会被重定向到
+    ~/Library/Mobile Documents/... —— `Path.home()/"Documents"` 跟着符号链接走,拿到的是对的。
+    报告因此可能被同步进 iCloud,这正是机密要单独放 config_dir 的原因。
+
+    **Windows 未支持**:那边「文档」可能被 OneDrive 重定向,真值在注册表里,
+    而这里拼出来的路径可能是个空壳。没有 Windows 环境可验,就不写没测过的分支
+    —— 真要在 Windows 上跑,显式传 --state-dir 或设 $SEO_OPS_DIR。
+    """
+    return Path.home() / "Documents"
+
+
+def _config_base():
+    """机密目录的基座:$XDG_CONFIG_HOME 或 ~/.config(macOS / Linux 通用)。"""
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+
+
 def state_dir(override=None):
-    """实例状态(sites.yaml / .env / out/)住哪 —— **不住包内,住项目侧**。
+    """花名册与产出住哪。--state-dir > $SEO_OPS_DIR > <文档目录>/seo-ops(见 _documents_dir)
 
-    优先级:--state-dir > $SEO_OPS_DIR > ${CLAUDE_PROJECT_DIR:-cwd}/.seo-ops
-
-    为什么不放包内:这份 checker 会被复制进 skill 目录,而 skill 更新 = 整包覆盖,
+    **不住包内**:这份 checker 会被复制进 skill 目录,而 skill 更新 = 整包覆盖,
     包内的可写状态必然随更新丢失(checks.db 尤其可惜,它设计成跨次累积好做 diff)。
-    状态该跟着「被检查的项目」走,而不是跟着「工具装在哪」走。
 
-    **注意 `CLAUDE_PROJECT_DIR` 在 Bash 里通常读不到** —— Claude Code 只把它作为
-    字符串替换喂给 SKILL.md 正文与 allowed-tools,以及作为环境变量喂给 hook / stdio MCP
-    等被 spawn 的进程;Bash 工具的 shell 不在其列。所以 skill 里的调用**必须显式传**
-    `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops`(替换在 markdown 里就完成了)。
-    这里仍读一次环境变量,是为了 hook / MCP 那类真能拿到它的场景。
-    都没有时退到 cwd:clone 本仓库直接用时 cwd 就是仓库根,得到 <仓库>/.seo-ops/。
+    **也不住 cwd 或某个项目里**:sites.yaml 是一份**站点**花名册,checks.db 是**站点**
+    的历史 —— 它们属于「你负责哪些站」,不属于「你此刻在哪个代码仓库里」。同一批站
+    从三个仓库验收,不该得到三份割裂的历史。所以是 per-user 的一个固定位置。
+
+    落在 ~/Documents 是刻意的:报告是**给人读、要拿去跟施工方对账**的产出,
+    该待在用户找得到的地方,不是藏在 dotfile 里(同 last30days 的 MEMORY_DIR 约定)。
+    机密不在这儿 —— 见 config_dir()。
+
+    附带好处:不依赖任何 agent 私有变量,所以 Claude Code / Codex / 裸命令行行为一致。
     """
     if override:
-        return Path(override).expanduser().resolve()
+        # 未被替换的占位符守卫。默认值已不依赖任何 agent 私有变量,但旧版 SKILL.md 里
+        # 写过 `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops` —— 那是 Claude Code 的私有扩展,
+        # 不在 Agent Skills spec 里,别家 agent 照抄不会替换。两种烂法:
+        #   原样传进来  → override 里还带着 "${"
+        #   被 shell 吃掉 → 变成 "/.seo-ops",父目录是根
+        # 后者在容器里以 root 跑会**真的建在文件系统根目录**,静默落错地方。宁可停。
+        if "${" in str(override) or "$(" in str(override):
+            raise SystemExit(
+                f"--state-dir 里有没被替换的变量:{override}\n"
+                f"`${{CLAUDE_PROJECT_DIR}}` 只有 Claude Code 会替换。**直接省略 --state-dir**\n"
+                f"即可(默认 ~/Documents/seo-ops),或传一个真实路径 / 设 $SEO_OPS_DIR。")
+        p = Path(override).expanduser().resolve()
+        if p.parent == Path(p.anchor):
+            raise SystemExit(
+                f"--state-dir 指到了文件系统根下:{p}\n"
+                f"多半是某个变量展开成了空字符串。**直接省略 --state-dir** 即可\n"
+                f"(默认 ~/Documents/seo-ops),或传一个真实路径 / 设 $SEO_OPS_DIR。")
+        return p
     if os.environ.get("SEO_OPS_DIR"):
         return Path(os.environ["SEO_OPS_DIR"]).expanduser().resolve()
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()).resolve() / ".seo-ops"
+    return _documents_dir() / "seo-ops"
+
+
+def config_dir():
+    """机密住哪。$SEO_OPS_CONFIG_DIR > ${XDG_CONFIG_HOME:-~/.config}/seo-ops
+
+    **与 state_dir 分开是有意的。** 产出放 ~/Documents 是为了让人找得到,但正因为
+    Documents 常被 iCloud / OneDrive / Dropbox 同步、被备份、被整个文件夹分享出去,
+    API key 不能跟着走。~/.config 不进这些通道。(同 last30days:产出进 Documents,
+    key 进 ~/.config/last30days/.env。)
+    """
+    if os.environ.get("SEO_OPS_CONFIG_DIR"):
+        return Path(os.environ["SEO_OPS_CONFIG_DIR"]).expanduser().resolve()
+    return _config_base().expanduser().resolve() / "seo-ops"
 
 def load_env(d=None):
-    """读 <state_dir>/.env,再读包内 checker/.env(旧布局,兼容)。
+    """按顺序读 .env,先读到的先赢:
 
-    `setdefault` 而非赋值:**已 export 的环境变量永远赢过文件** —— CI 里注入 key
-    不该被谁的本地 .env 盖掉。先读的先赢,所以 state_dir 的 .env 优先于包内旧的。
+      1. <config_dir>/.env      —— 正位(默认 ~/.config/seo-ops/.env)
+      2. <state_dir>/.env       —— 旧布局,告警
+      3. 包内 checker/.env      —— 更旧的布局,告警
+
+    `setdefault` 而非赋值:**已 export 的环境变量永远赢过所有文件** —— CI 里注入 key
+    不该被谁的本地 .env 盖掉。
     """
     def parse(f):
         kv = {}
@@ -46,21 +99,22 @@ def load_env(d=None):
             kv[k.strip()] = v.strip().strip('"').strip("'")
         return kv
 
-    sd = d or state_dir()
-    legacy = Path(__file__).with_name(".env")
-    for f in (sd / ".env", legacy):
+    canonical = config_dir() / ".env"
+    sources = [(canonical, None),
+               ((d or state_dir()) / ".env", "旧布局(机密不该跟产出同住,Documents 常被云同步)"),
+               (Path(__file__).with_name(".env"), "包内旧布局(随 skill 更新会被覆盖)")]
+    for f, why in sources:
         if not f.exists():
             continue
         kv = parse(f)
         fresh = [k for k in kv if k not in os.environ]
         for k, v in kv.items():
             os.environ.setdefault(k, v)
-        # 静默的包内配置最坑:同一条命令换个安装位置就给出不同结论(实测 C4 一处出
-        # 实测值、一处记 need-crux-key)。兼容可以留,但必须让人看见。
-        # 只在它**真的提供了值**时才喊 —— 被上一份盖掉时喊,就成了每次都响的噪音。
-        if f == legacy and fresh:
-            print(f"⚠️  {', '.join(fresh)} 来自包内 {legacy} —— 它随 skill 更新会被覆盖。"
-                  f"请移到 {sd / '.env'}", flush=True)
+        # 只在它**真的提供了值**时才喊 —— 被上一份盖掉时也喊,就成了每次都响的噪音。
+        # 但真提供了值就必须喊:静默的错位配置会让同一条命令在两台机器上给出不同结论
+        # (实测 C4 一处出实测值、一处记 need-crux-key)。
+        if why and fresh:
+            print(f"⚠️  {', '.join(fresh)} 来自 {f} —— {why}。请移到 {canonical}", flush=True)
 
 load_env()
 
@@ -122,18 +176,18 @@ LANG_REDIRECT_PROBES = ("en-US,en;q=0.9", "zh-CN,zh;q=0.9")
 CWV_LCP_MS = 2500
 CWV_INP_MS = 200
 CWV_CLS = 0.1
-CRUX_API_KEY = os.environ.get("CRUX_API_KEY", "")   # 住 .env;空 = 未接 CrUX,C4 记 N.A.(need-crux-key)
+CRUX_API_KEY = os.environ.get("CRUX_API_KEY", "")   # 住 <config_dir>/.env;空 = C4 记 N.A.(need-crux-key)
 
 # ── C5 IndexNow ──────────────────────────────────────
-# 住 .env:INDEXNOW_KEYS=site_id:key,site_id:key(key 即站根 {key}.txt 的文件名与内容)
+# 住 <config_dir>/.env:INDEXNOW_KEYS=site_id:key,site_id:key(key 即站根 {key}.txt 的文件名与内容)
 INDEXNOW_KEYS = dict(                               # 未登记 = N.A.(need-key-declaration)
     pair.split(":", 1) for pair in
     (p.strip() for p in os.environ.get("INDEXNOW_KEYS", "").split(",")) if ":" in pair
 )
 
 def refresh_secrets():
-    """`--state-dir` 在 argparse 之后才知道,而上面两个常量在 import 时就定了。
-    run.py 解析完参数后调一次,按新的 state_dir 重读 .env 并刷新。"""
+    """`--state-dir` 在 argparse 之后才知道(它影响 load_env 的第二个候选位置),
+    而上面两个常量在 import 时就定了。run.py 解析完参数后调一次,重读并刷新。"""
     global CRUX_API_KEY, INDEXNOW_KEYS
     CRUX_API_KEY = os.environ.get("CRUX_API_KEY", "")
     INDEXNOW_KEYS = dict(

@@ -10,12 +10,14 @@ C1–C20、C23–C26;C21/C22 为人审项,报表列出不判。
   python3 checker/run.py --site tigerless-com  # 只跑 sites.yaml 里的一个站
   python3 checker/run.py --target http://localhost:3000   # 单站覆盖(本地模式自动判定)
 
-实例状态(sites.yaml / .env / 报告)住 **<state-dir>**,默认 ${CLAUDE_PROJECT_DIR:-cwd}/.seo-ops
-——不住包内,因为这份 checker 会被复制进 skill,而 skill 更新 = 整包覆盖。
-  <state-dir>/sites.yaml               — 站点花名册(多站才需要)
-  <state-dir>/.env                     — API key(已 export 的环境变量优先)
-  <state-dir>/out/report-<site>-<date>.md  — 与 checklist 同构的表单(三节;结果 + 证据)
-  <state-dir>/out/checks.db                — checks 快照(SQLite,schema 见 CLAUDE.md)
+不往包内写任何东西(这份 checker 会被复制进 skill,skill 更新 = 整包覆盖)。两处外部目录:
+  <state-dir>  默认 ~/Documents/seo-ops   —— 花名册与产出,给人读的东西
+    ├── sites.yaml                        — 站点花名册(多站才需要)
+    └── out/report-<site>-<date>.md       — 与 checklist 同构的表单(三节;结果 + 证据)
+        out/checks.db                     — checks 快照(SQLite,schema 见 CLAUDE.md)
+  <config-dir> 默认 ~/.config/seo-ops     —— 机密,单独放
+    └── .env                              — API key(已 export 的环境变量优先)
+  Documents 常被云同步/备份/整夹分享,所以 key 不跟产出同住。
 
 三条不变量:
   1. **三态判定** pass / fail / N.A.(reason) —— 「没测」和「没事」不许混成一个绿。
@@ -1126,8 +1128,7 @@ def main():
     ap.add_argument("--workers", type=int, default=CFG.FETCH_CONCURRENCY,
                     help="并发抓取线程数;1 = 顺序执行(对拍用)")
     ap.add_argument("--state-dir", default=None,
-                    help="实例状态目录(sites.yaml / .env / out/);"
-                         "默认 ${CLAUDE_PROJECT_DIR:-cwd}/.seo-ops,也可用 $SEO_OPS_DIR")
+                    help="花名册与产出目录;默认 ~/Documents/seo-ops,也可用 $SEO_OPS_DIR")
     ap.add_argument("--out", default=None, help="报告与 checks.db 落在哪;默认 <state-dir>/out")
     ap.add_argument("--verify-only", action="store_true",
                     help="只跑漂移守卫(清单 vs 脚本),不联网;有漂移则以 1 退出。CI 用")
