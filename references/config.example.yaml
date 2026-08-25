@@ -47,7 +47,7 @@ SITEMAP_LASTMOD_CLUSTER_RATIO: 0.2
 # C26:自动语言重定向的抽样页数
 LANG_REDIRECT_SAMPLE_SIZE: 5
 
-# C6:内链图爬取上限(防失控)
+# C6:站内爬取上限(防失控);触顶则覆盖不完整,记 N.A.
 CRAWL_MAX_PAGES: 5000
 
 # C9:禁 JS 文本 / 渲染版文本 下限(接 headless 后启用)

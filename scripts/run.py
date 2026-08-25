@@ -412,33 +412,34 @@ def check_site(site, f, args):
         ok = rr["status"] == 200 and key in rr["text"]
         R.set("C5", PASS if ok else FAIL, f"/{key}.txt → {rr['status']}")
 
-    # ---------- C6 内链图健康(无 orphan + 无站内死链)----------
-    crawled, discovered, capped, dead_links, crawl_thr = crawl_links(f, origin, args.max_pages)
-    dead_ev = bad_link_evidence(dead_links)
+    # ---------- C6 站内出链无 4xx/5xx(sitemap 之外的那部分)----------
+    # 与 C2 的分工:**C2 判「声明要收录的 URL 可达吗」(sitemap 内),
+    # C6 判「页面上真实存在的链接可达吗」(链接图)。** 两者在 sitemap 内的 URL 上重合,
+    # 所以这里把命中 sitemap 的目标剔掉,只留 C2 结构上看不到的那部分 ——
+    # hub 里残留的旧链接、写错的 href、下架后没清的入链。
+    #
+    # 2026-08-25 同时移除 orphan 判定:它靠「没看见」下结论,而爬不全是常态
+    # (限流 / 上限 / 登录态 / 语言分簇)—— 实测 tigerless.com 报 138 条 orphan,
+    # 根因是 C26 把爬虫锁进 /cn 簇,补内链治不好。死链相反,「看见了」才报。
+    crawled, _disc, capped, dead_links, crawl_thr = crawl_links(f, origin, args.max_pages)
+    smset = {norm_url(map_host(u, site, local, origin)) for u in sitemap_urls} if sitemap_urls else set()
+    outside = [d for d in dead_links if norm_url(d[0]) not in smset]
+    dead_ev = bad_link_evidence(outside)
+    partial = []
     if crawl_thr:
-        # 限流页的出链没被解析 → 它的子页会被误判成 orphan。整条记 N.A.,不发假红。
-        R.set("C6", NA, f"throttled(爬取中 {crawl_thr} 页被限流,orphan 判定失真;"
-                        f"降 --workers 或调大 --sleep 重跑)"
-                        + (";" + dead_ev if dead_ev else ""))
-    elif not sitemap_urls:
-        R.set("C6", FAIL if dead_links else NA,
-              dead_ev or "sitemap 不可用,orphan 无从比对")
+        partial.append(f"throttled(爬取中 {crawl_thr} 页被限流,其出链未解析;"
+                       f"降 --workers 或调大 --sleep 重跑)")
+    if capped:
+        partial.append(f"crawl-capped(爬 {crawled} 页触上限 {args.max_pages})")
+    if outside:
+        # 找到的死链是确凿的,覆盖不全不影响这个结论 —— 只是可能还有没爬到的
+        R.set("C6", FAIL, ";".join([dead_ev] + partial))
+    elif partial:
+        R.set("C6", NA, ";".join(partial) + ";覆盖不完整,不足以断言站内出链干净")
     else:
-        smset = {norm_url(map_host(u, site, local, origin)) for u in sitemap_urls}
-        orphan = smset - discovered
-        if capped:
-            # 触顶时 orphan 判定不成立(没爬完不能说"没链到"),但已抓到的死链是确凿的,照报
-            R.set("C6", FAIL if dead_links else NA,
-                  (dead_ev + ";" if dead_ev else "") +
-                  f"crawl-capped(爬 {crawled} 页触上限 {args.max_pages};"
-                  f"orphan 部分数据:未见于内链 {len(orphan)}/{len(smset)} 条,仅供参考)")
-        elif orphan or dead_links:
-            ev = []
-            if orphan: ev.append(f"orphan {len(orphan)} 条:" + ";".join(sorted(orphan)[:5]))
-            if dead_ev: ev.append(dead_ev)
-            R.set("C6", FAIL, ";".join(ev))
-        else:
-            R.set("C6", PASS, f"sitemap {len(smset)} 条全部内链可达、站内链接无 4xx/5xx(爬 {crawled} 页)")
+        n = len(dead_links) - len(outside)
+        R.set("C6", PASS, f"爬 {crawled} 页,sitemap 之外的站内出链无 4xx/5xx"
+                          + (f"(另有 {n} 条坏链目标在 sitemap 内,归 C2)" if n else ""))
 
     # ---------- C7 llms.txt ----------
     rr = f.get(origin + "/llms.txt")
@@ -800,33 +801,6 @@ def robots_blocks(txt, ua):
     allow_root = any(k == "allow" and v == "/" for k, v in best)
     return dis_root and not allow_root
 
-def bad_link_evidence(bad):
-    """C6 的坏出链证据:按 4xx 语义分组。判定不变(都算红 —— 爬虫跟着链接撞墙、消耗抓取预算),
-    但**名字要对**:401/403 是「页面活着,只是不给匿名看」,和「内容没了」是两回事。
-    统称「死链」会让人去找一个根本不存在的坏页面,而两类的修法完全不同:
-      · 404/410/5xx → 内容没了 → 清入链(下架事务漏了一步,见 C13)
-      · 401/403     → 页面活着,只是没给我们看 —— **成因不唯一,不许替它下结论**
-
-    401/403 的成因至少五种,checker 分辨不了,所以只陈述事实 + 列出分支让人判:
-      登录态/权限门 · WAF 反爬挑战(拦的是 checker,不是爬虫)· 地域封锁 · 配错权限 · 付费墙
-    2026-08-25 实测教训:tigerless.com 的 /login、/user/Plan 三条 403 body 是
-    「Just a moment...」= Cloudflare 挑战页,**根本不是登录门** —— 我第一版直接标成
-    「登录态入口」,是拿个案倒推通例,错了。
-    """
-    def fmt(rows):
-        return ";".join(f"{u} → {st}(来源 {src})" for u, st, src in rows[:5])
-    restricted = [r for r in bad if r[1] in (401, 403)]
-    broken = [r for r in bad if r[1] not in (401, 403)]
-    parts = []
-    if broken:
-        parts.append(f"站内死链 {len(broken)} 条:{fmt(broken)}")
-    if restricted:
-        parts.append(f"访问受限 {len(restricted)} 条(401/403,页面存在但未返回内容;"
-                     f"成因需人确认 — 登录态 / WAF 挑战 / 地域限制 / 权限配错。"
-                     f"正解:未登录时不输出该链接或加 rel=nofollow + robots.txt Disallow + 不进 sitemap;"
-                     f"若为 WAF 则核对规则是否放行已验证爬虫):{fmt(restricted)}")
-    return ";".join(parts)
-
 def lastmod_problems(entries):
     """C2 的 lastmod 三判:覆盖率 / 新鲜度 / 真实性。
 
@@ -907,46 +881,6 @@ def map_host(url, site, local, origin):
         return u._replace(scheme=o.scheme, netloc=o.netloc).geturl()
     return url
 
-def crawl_links(f, origin, max_pages):
-    """BFS 内链;返回 (爬取页数, 发现的站内 URL 集合(norm), 是否触顶, 死链 [(url, status, 来源页)])。
-
-    死链与 orphan 同源于这一次爬取:orphan 问「图上有没有这条边」,死链问「这条边通不通」。
-    只覆盖站内链接 —— 站外出链每轮打第三方站,慢且易被 429/403 误报,归生成侧自检 + 人审(C6.md)。
-
-    逐层并发:一层内的页互不依赖(新发现只会进**下一层**),所以整层可以并发抓,
-    再**按层内原序**合并结果 —— 与逐页 BFS 的 discovered/parent/dead 完全一致,输出可复现。
-    """
-    o = urlparse(origin)
-    start = norm_url(origin + "/")
-    frontier, seen_fetch, discovered = [start], set(), {start}
-    parent, dead, thr = {}, [], 0
-    while frontier and len(seen_fetch) < max_pages:
-        level = frontier[:max_pages - len(seen_fetch)]   # 与顺序版同样的截断点
-        frontier = frontier[len(level):]
-        for u, r in zip(level, f.map(f.get, level)):
-            seen_fetch.add(u)
-            if throttled(r):
-                thr += 1                 # 限流页:不算死链,但它的出链没被解析 → orphan 判定也失真
-                continue
-            if r["status"] is None or r["status"] >= 400:
-                dead.append((u, r["status"] or r["err"], parent.get(u, "(起点)")))
-                continue
-            if r["status"] != 200 or "<html" not in r["text"][:2000].lower():
-                continue
-            for href in re.findall(r'<a\s[^>]*href=["\']([^"\'#]+)["\']', r["text"], flags=re.I):
-                absu = urljoin(r["final_url"], href)
-                p = urlparse(absu)
-                if p.netloc != o.netloc or p.scheme not in ("http", "https"):
-                    continue
-                if re.search(r"\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|mp4|css|js)$", p.path, flags=re.I):
-                    continue
-                n = norm_url(absu.split("#")[0])
-                if n not in discovered:
-                    discovered.add(n)
-                    parent[n] = u
-                    frontier.append(n)
-    return len(seen_fetch), discovered, bool(frontier), dead, thr
-
 def crux_check(site, f):
     host = urlparse(site["origin"]).netloc
     try:
@@ -977,7 +911,7 @@ CHECKS = [
         ("C26", "P0", "语言版本按 URL 固定,不按请求头分流(同一 URL 在各 Accept-Language 下落点必须一致)"),
         ("C4", "P1", "CWV:LCP<2.5s / INP<200ms / CLS<0.1"),
         ("C5", "P1", "IndexNow key 文件在站根可达"),
-        ("C6", "P1", "内链图健康:无 orphan + 站内出链无 4xx/5xx(站外归人审)"),
+        ("C6", "P1", "站内出链无 4xx/5xx:sitemap 之外的目标(sitemap 内归 C2;站外归人审)"),
         ("C7", "P2", "llms.txt 存在且为非空合法 markdown(重点页覆盖 = 人审)"),
     ]),
     ("二、每收录页", [
@@ -1056,6 +990,73 @@ def verify_config_example():
            "跑 `python3 scripts/config.py --write-example` 重新生成")
     print(msg, flush=True); return [msg]
 
+def bad_link_evidence(bad):
+    """C6 的坏出链证据:按 4xx 语义分组。判定不变(都算红 —— 爬虫跟着链接撞墙、消耗抓取预算),
+    但**名字要对**:401/403 是「页面活着,只是不给匿名看」,和「内容没了」是两回事。
+    统称「死链」会让人去找一个根本不存在的坏页面,而两类的修法完全不同:
+      · 404/410/5xx → 内容没了 → 清入链(下架事务漏了一步,见 C13)
+      · 401/403     → 页面活着,只是没给我们看 —— **成因不唯一,不许替它下结论**
+
+    401/403 的成因至少五种,checker 分辨不了,所以只陈述事实 + 列出分支让人判:
+      登录态/权限门 · WAF 反爬挑战(拦的是 checker,不是爬虫)· 地域封锁 · 配错权限 · 付费墙
+    2026-08-25 实测教训:tigerless.com 的 /login、/user/Plan 三条 403 body 是
+    「Just a moment...」= Cloudflare 挑战页,**根本不是登录门** —— 我第一版直接标成
+    「登录态入口」,是拿个案倒推通例,错了。
+    """
+    def fmt(rows):
+        return ";".join(f"{u} → {st}(来源 {src})" for u, st, src in rows[:5])
+    restricted = [r for r in bad if r[1] in (401, 403)]
+    broken = [r for r in bad if r[1] not in (401, 403)]
+    parts = []
+    if broken:
+        parts.append(f"站内死链 {len(broken)} 条:{fmt(broken)}")
+    if restricted:
+        parts.append(f"访问受限 {len(restricted)} 条(401/403,页面存在但未返回内容;"
+                     f"成因需人确认 — 登录态 / WAF 挑战 / 地域限制 / 权限配错。"
+                     f"正解:未登录时不输出该链接或加 rel=nofollow + robots.txt Disallow + 不进 sitemap;"
+                     f"若为 WAF 则核对规则是否放行已验证爬虫):{fmt(restricted)}")
+    return ";".join(parts)
+
+def crawl_links(f, origin, max_pages):
+    """BFS 内链;返回 (爬取页数, 发现的站内 URL 集合(norm), 是否触顶, 死链 [(url, status, 来源页)])。
+
+    死链与 orphan 同源于这一次爬取:orphan 问「图上有没有这条边」,死链问「这条边通不通」。
+    只覆盖站内链接 —— 站外出链每轮打第三方站,慢且易被 429/403 误报,归生成侧自检 + 人审(C6.md)。
+
+    逐层并发:一层内的页互不依赖(新发现只会进**下一层**),所以整层可以并发抓,
+    再**按层内原序**合并结果 —— 与逐页 BFS 的 discovered/parent/dead 完全一致,输出可复现。
+    """
+    o = urlparse(origin)
+    start = norm_url(origin + "/")
+    frontier, seen_fetch, discovered = [start], set(), {start}
+    parent, dead, thr = {}, [], 0
+    while frontier and len(seen_fetch) < max_pages:
+        level = frontier[:max_pages - len(seen_fetch)]   # 与顺序版同样的截断点
+        frontier = frontier[len(level):]
+        for u, r in zip(level, f.map(f.get, level)):
+            seen_fetch.add(u)
+            if throttled(r):
+                thr += 1                 # 限流页:不算死链,但它的出链没被解析 → orphan 判定也失真
+                continue
+            if r["status"] is None or r["status"] >= 400:
+                dead.append((u, r["status"] or r["err"], parent.get(u, "(起点)")))
+                continue
+            if r["status"] != 200 or "<html" not in r["text"][:2000].lower():
+                continue
+            for href in re.findall(r'<a\s[^>]*href=["\']([^"\'#]+)["\']', r["text"], flags=re.I):
+                absu = urljoin(r["final_url"], href)
+                p = urlparse(absu)
+                if p.netloc != o.netloc or p.scheme not in ("http", "https"):
+                    continue
+                if re.search(r"\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|mp4|css|js)$", p.path, flags=re.I):
+                    continue
+                n = norm_url(absu.split("#")[0])
+                if n not in discovered:
+                    discovered.add(n)
+                    parent[n] = u
+                    frontier.append(n)
+    return len(seen_fetch), discovered, bool(frontier), dead, thr
+
 def render_report(site, R, mode, ok_n, total_n, args):
     lines = [f"# checker 报告:{site['id']}",
              "",
@@ -1076,7 +1077,8 @@ def render_report(site, R, mode, ok_n, total_n, args):
         lines.append("")
     counts = {"fail_p0": 0, "fail": 0, "pass": 0, "na": 0}
     for sec, items in CHECKS:
-        lines += [f"## {sec}", "", "| ID | 优先级 | 检查 | 结果 | 证据 |", "|---|---|---|---|---|"]
+        lines += [f"## {sec}", "",
+                  "| ID | 优先级 | 检查 | 结果 | 证据 | 说明 |", "|---|---|---|---|---|---|"]
         for cid, prio, name in items:
             status, ev = R.rows.get(cid, (NA, "未实现"))
             if status == FAIL:
@@ -1089,7 +1091,11 @@ def render_report(site, R, mode, ok_n, total_n, args):
             # 完整证据仍进 checks.db —— 报告给人读,库给机器读,截断只发生在前者。
             if len(ev) > CFG.EVIDENCE_MAX_CHARS:
                 ev = ev[:CFG.EVIDENCE_MAX_CHARS].rstrip() + f"…(已截断,完整见 checks.db 的 {cid} 行)"
-            lines.append(f"| {cid} | {prio} | {name} | {ICON[status]} | {ev} |")
+            # 说明列:指向该条的正本 —— 判定标准、常见错法、权威依据、怎么改都在那篇。
+            # 报告只放链接不放正文:报告要能两次跑逐字相同,而解释一旦写进来就得跟着
+            # 正本改,迟早对不上;链接永远指向当下的正本。
+            doc = f"references/checklist/references/{cid}.md"
+            lines.append(f"| {cid} | {prio} | {name} | {ICON[status]} | {ev} | [{cid} 说明]({doc}) |")
         lines.append("")
     lines.insert(5, f"**结论:🔴 {counts['fail']}(其中 P0 {counts['fail_p0']})· "
                     f"✅ {counts['pass']} · ⚪ N.A. {counts['na']} · 👤 人审 2**")

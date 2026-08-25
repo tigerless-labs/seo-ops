@@ -200,8 +200,8 @@ def refresh_secrets():
         (p.strip() for p in os.environ.get("INDEXNOW_KEYS", "").split(",")) if ":" in pair
     )
 
-# ── C6 无 orphan(内链图爬取)─────────────────────────
-CRAWL_MAX_PAGES = 5000        # 内链图爬取上限(防失控)
+# ── C6 站内出链(内链图爬取)───────────────────────────
+CRAWL_MAX_PAGES = 5000        # 爬取上限(防失控);触顶则覆盖不完整,记 N.A.
 
 # ── C9 服务端直出(v1 启发式;比例判定待接 headless)────
 SSR_TEXT_RATIO = 0.90         # 目标判定:禁 JS 文本 / 渲染版文本 下限(headless 接入后启用)
@@ -312,7 +312,7 @@ TUNABLE = {
     "SITEMAP_URL_SAMPLE_SIZE":             "C2:条目可达性抽查数",
     "SITEMAP_LASTMOD_CLUSTER_RATIO":       "C2:单日 lastmod 簇占比超此值且为当天 = 疑似构建戳",
     "LANG_REDIRECT_SAMPLE_SIZE":           "C26:自动语言重定向的抽样页数",
-    "CRAWL_MAX_PAGES":                     "C6:内链图爬取上限(防失控)",
+    "CRAWL_MAX_PAGES":                     "C6:站内爬取上限(防失控);触顶则覆盖不完整,记 N.A.",
     "SSR_TEXT_RATIO":                      "C9:禁 JS 文本 / 渲染版文本 下限(接 headless 后启用)",
     "SSR_MIN_TEXT_CHARS":                  "C9:禁 JS 抓取正文低于此值 = 疑似 CSR 空壳",
     "CACHE_DIFF_SAMPLE_SIZE":              "C10:同 URL 双抓 diff 的抽查页数",

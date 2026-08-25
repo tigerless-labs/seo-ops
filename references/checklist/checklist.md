@@ -1,5 +1,10 @@
 # 检查清单(C 集,静态结构检查)
 
+(2026-08-25:**C6 收窄** —— 移除 orphan 判定(靠「没看见」下结论,而爬不全是常态:限流 /
+上限 / 登录态 / 语言分簇;实测 tigerless.com 报的 138 条 orphan,根因是 C26 的语言分流,
+补内链治不好)。剩下的死链判定与 C2 在 sitemap 内的 URL 上重合,故只保留不重合的那部分:
+**C2 判「声明要收录的 URL 可达吗」,C6 判「页面上真实存在的链接可达吗」**。)
+
 **Metadata** — 决策:Ryan · 起草:Claude / 评审:Ryan / 日期:2026-08-21 / 状态:`draft`
 (2026-08-21 定位:**具体检查项(C 集)在本篇定义与维护,含其权威依据**;红线 R1–R8 及其依据在
 seo-conformance.md;流程判定随规则住 methods。)
@@ -30,7 +35,7 @@ seo-conformance.md;流程判定随规则住 methods。)
 | C26 | P0 | 语言版本**按 URL 固定,不按请求头分流**(同一 URL 在各 `Accept-Language` 下落点必须一致) | 抽样页各发一次 en-US / zh-CN,比对 final_url;不一致 = 存在按推测语言的自动跳转 | checker |
 | C4 | P1 | CWV:LCP<2.5s / INP<200ms / CLS<0.1 | CrUX API(**需域名且上线后有真实流量(约 28 天);此前记 N.A.**) | checker |
 | C5 | P1 | IndexNow key 文件在站根可达 | fetch key 文件,200 且内容 == key(**需站点方报 key 登记进 config.INDEXNOW_KEYS;未登记记 N.A.**) | checker |
-| C6 | P1 | 内链图健康:无 orphan(sitemap 全集 ⊆ 内链可达图)+ 站内出链无 4xx/5xx(站外出链归人审) | 内链图爬取 × sitemap 差集为空;爬取途中每条站内链接状态码 <400 | checker |
+| C6 | P1 | 站内出链无 4xx/5xx:**sitemap 之外的目标**(sitemap 内归 C2;站外出链归人审) | 爬内链图,目标不在 sitemap 里的站内链接状态码 <400;未爬全则记 N.A. | checker |
 | C7 | P2 | **脚本覆盖**:llms.txt 存在且为非空合法 markdown。**人审**:重点页覆盖与摘要正确(对照 T2 清单) | fetch + 格式检查 | checker + 人审 |
 
 ## 二、每收录页
