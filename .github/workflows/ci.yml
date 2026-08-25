@@ -26,15 +26,12 @@ jobs:
           python-version: "3.9"          # 文档承诺的下限,CI 就按下限跑
       - run: pip install -r checker/requirements.txt
 
-      # ── 三道守卫,都不联网 ───────────────────────────────
+      # ── 不联网的守卫 ─────────────────────────────────────
       - name: 语法
-        run: python -m compileall -q checker skills
+        run: python -m compileall -q checker
 
       - name: 清单与脚本对齐(C 集条目/优先级/所属节)
         run: python checker/run.py --verify-only
-
-      - name: skill 副本与正本一致
-        run: python skills/sync.py --check
 
       # ── 目录解析:两个默认位置必须落在 home 下,且彼此分开 ──
       - name: 默认目录解析(两处必须分开)

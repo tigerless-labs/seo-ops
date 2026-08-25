@@ -1,6 +1,6 @@
 # seo-ops
 
-**SEO 基础工程的检查清单 + checker 脚本。**
+**SEO 基础工程的检查清单 + checker 脚本,整个仓库就是一个 agent skill。**
 
 自包含,零外部依赖(除 `requests` / `PyYAML`),不联系任何服务,只读目标站点的公开 HTTP 产出。
 
@@ -8,48 +8,37 @@
 
 ## 装
 
+**整个仓库就是一个 skill。** clone 到 agent 加载 skill 的位置即可:
+
 ```bash
-git clone https://github.com/tigerless-labs/seo-ops.git
-cd seo-ops && pip install -r checker/requirements.txt
+git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
+pip install -r ~/.claude/skills/seo-ops/checker/requirements.txt
 ```
 
-只有 `requests` 和 `PyYAML`,其余是标准库。Python ≥ 3.9。
+Claude Code 个人级用 `~/.claude/skills/`、项目级用 `<repo>/.claude/skills/`;
+Codex 用 `~/.codex/skills/` 或 `.codex/skills/`;别家 agent 按自己的约定。
+更新就 `git pull` —— 没有副本、没有同步脚本,只有一份正本。
 
 ## 用
 
-在这个目录里开 Claude Code(或别的 coding agent),直接说:
+装好后直接说:
 
 > 跑一下 tigerless.com 的 SEO 检查
 
-命令行、配置项、报告怎么读,agent 会从 `CLAUDE.md` 自己查,不用你记。
+命令行、配置项、报告怎么读,agent 从 `SKILL.md` 自己查,不用你记。
 
-报告落在 **`~/Documents/seo-ops/out/`**,API key 在 `~/.config/seo-ops/.env` —— 都在仓库外,
-所以 `git pull` 更新时原地不动,也不可能被误提交。
+产出落 **`~/Documents/seo-ops/out/`**,API key 在 `~/.config/seo-ops/.env` —— 都在
+skill 目录外,所以更新时原地不动,也不可能被误提交。
 
 ## content 团队怎么用
 
 **你只需要过一份清单:T 集。** 不用跑脚本,不用读 C 集(那是工程侧的活)。
 
-1. 把 [skills/seo-content](skills/seo-content) 整个目录给你的 agent(Claude Code 放
-   `.claude/skills/`,Codex 放 `.codex/skills/`)
-2. 说一句:**「用 seo-content 检查这份页面 doc」**,把文档给它
-3. 它按 T 集逐条列出缺什么、怎么补,你照着补
+装法同上,然后说一句:**「用 seo-ops 检查这份页面 doc 的 SEO 供给项」**,把文档给它。
+它按 T 集逐条列出缺什么、怎么补,你照着补。就这些。
 
-就这些。清单本体是 [content/content-checklist.md](content/content-checklist.md),
-想自己读也行 —— 每条都有一篇「要交什么、什么样算合格」的详细说明。
-
-## 装到别的仓库去
-
-想让**别的仓库**的 agent 也能对着清单干活(审模板、查页面 doc),不用把整个仓库 clone 过去
-—— [skills/](skills/README.md) 下有两个可单独安装的 skill,复制走即可:
-
-| skill | 给谁 |
-|---|---|
-| `skills/seo-ops` | 工程:对照 C 集审模板、meta、结构化数据、路由与渲染策略;也带 checker,能就地跑 |
-| `skills/seo-content` | content / 设计:对照 T 集查页面 doc 的 SEO 供给项 |
-
-装进去之后报告仍落 `~/Documents/seo-ops/`,不在 skill 目录里 ——
-skill 更新是整包覆盖,状态放里面必丢。
+清单本体是 [content/content-checklist.md](content/content-checklist.md),想自己读也行
+—— 每条都有一篇「要交什么、什么样算合格」的详细说明。
 
 ---
 
