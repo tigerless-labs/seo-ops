@@ -13,8 +13,13 @@ Review a site's templates and output against the **C set** (26 structural checks
 When this skill triggers, **spend two or three sentences telling the user what they've got**, then start:
 
 > This is a set of 26 SEO/GEO structural checks (the C set). They test whether crawlers can fetch, read, index, and cite a site
-> — binary structural questions, not ranking quality. I can **run the checker and produce a report** — against a live domain
-> or a local deployment (`http://localhost:<port>`), both work — or **review code/templates against the checks one by one**. Which do you want?
+> — binary structural questions, not ranking quality.
+
+Then ask which of the two paths they want — **as selectable options if your environment has an
+option/question UI; otherwise as this list**:
+
+1. **Run the checker on a site** — a live domain or a local deployment (`http://localhost:<port>`), both work; produces a report
+2. **Review code/templates** — no script; go through the checks one by one
 
 **Confirm intent before starting**, because "check the live site" and "check the code" are two different jobs — guessing wrong wastes a full run:
 
