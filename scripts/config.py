@@ -145,7 +145,7 @@ load_env()
 
 # ── run target (one parameter, mode auto-detected) ────
 # TARGET: the site's **root URL (origin)** = scheme + host[:port], no path/query/fragment
-#   (valid: "http://localhost:3000", "https://www.tigerless.com";
+#   (valid: "http://localhost:3000", "https://www.example.com";
 #    invalid: "…/blog", "…?x=1" — validated at startup, errors out, never guesses).
 #   Every entry point derives from the root: /robots.txt, sitemap, llms.txt, the crawl start.
 #   Empty = run every site in sites.yaml (live).
@@ -157,10 +157,10 @@ load_env()
 #     (reason=need-crux-data).
 # Public staging domains are unsupported (they'd be judged as the production domain, C3
 # falsely red) — for testing, pick one: launch, or deploy locally.
-TARGET = ""    # e.g. "http://localhost:3000" or "https://www.tigerless.com"
+TARGET = ""    # e.g. "http://localhost:3000" or "https://www.example.com"
 
 # ── fetching ──────────────────────────────────────────
-# Real browser UA: Cloudflare blocks fake crawler UAs (2026-08-21, measured 403 on tigerless.com)
+# Real browser UA: Cloudflare blocks fake crawler UAs (2026-08-21, measured 403 on the pilot site)
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 REQUEST_TIMEOUT = 20          # seconds
@@ -168,7 +168,7 @@ FETCH_SLEEP = 1.0             # interval between two requests of **a single work
 # Default 1 = sequential. 271 pages take about 7 minutes — painless for a daily scheduled
 # run, and it removes a whole class of risk (thread safety, shared backoff state, throttle
 # false positives, the verification burden of a concurrency output-diff).
-# Measured: a sequential run against tigerless.com got **zero throttling**; every 429 came
+# Measured: a sequential run against the pilot site got **zero throttling**; every 429 came
 # from concurrency.
 # `Fetcher.map()` with workers<=1 is a plain list comprehension, no threads — concurrency
 # is a reserved seam, not the default path.
@@ -182,7 +182,7 @@ PAGE_SAMPLE_SIZE = 0          # page-level check coverage: 0 = every page the si
 # not that the site is broken.
 # 429/503 always: back off and retry → still failing, record N.A. (reason=throttled),
 # slow down globally + warn at the top of the report.
-# Lesson (measured 2026-08-25): 8 workers × 1s against tigerless.com = 192 of 271 pages
+# Lesson (measured 2026-08-25): 8 workers × 1s against the pilot site = 192 of 271 pages
 # ate 429s, and "dead internal links" inflated from 2 to a false 106 — false reds are far
 # more dangerous than running slow.
 THROTTLE_STATUSES = (429, 503)

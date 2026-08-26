@@ -110,7 +110,7 @@ To test before launch, pick one: run a local deployment at `http://localhost:<po
 
 ### Multi-site: run a batch in one go
 
-"Multi-site" = you have several domains to accept at once (e.g. `tigerless.com` + `tigerless.ai` + `blog.tigerless.com`),
+"Multi-site" = you have several domains to accept at once (e.g. `example.com` + `example.org` + `blog.example.com`),
 don't want to retype `--target` every time, and want each site to carry its own rendering strategy and must-test pages. After creating `sites.yaml` (see "Configuration"):
 
 ```bash

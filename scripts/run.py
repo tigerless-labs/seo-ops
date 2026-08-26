@@ -9,7 +9,7 @@ auto-generated (each one is hand-written), but "which items exist, what priority
 section" must match; on mismatch it shouts on stdout.
 
   python3 scripts/run.py                       # config.TARGET empty → run every site in sites.yaml
-  python3 scripts/run.py --site tigerless-com  # run just one site from sites.yaml
+  python3 scripts/run.py --site example-com    # run just one site from sites.yaml
   python3 scripts/run.py --target http://localhost:3000   # single-site override (local mode auto-detected)
 
 Writes nothing inside the package (this checker gets copied into the skill; a skill
@@ -115,7 +115,7 @@ class Fetcher:
             s.headers["User-Agent"] = CFG.UA
             # Never store cookies: a crawler is a **stateless first visit** every time; it
             # never carries the previous page's state. Reusing cookies makes the checker
-            # behave like a user — 2026-08-25, measured on tigerless.com:
+            # behave like a user — 2026-08-25, measured on the pilot site:
             # cookieless first visit to /home hops twice to /cn (Chinese, Set-Cookie records
             # the language); with cookies it hops once to / (English). Session reuse means
             # "whichever page got fetched first" decides the whole report, and the result
@@ -473,7 +473,7 @@ def check_site(site, f, args):
     #
     # 2026-08-25 also removed the orphan verdict: it concludes from "not seen", while
     # incomplete crawls are the norm (throttling / caps / login state / language clusters)
-    # — measured on tigerless.com it reported 138 orphans, root cause being C26 locking
+    # — measured on the pilot site it reported 138 orphans, root cause being C26 locking
     # the crawler into the /cn cluster; adding internal links cures nothing. Dead links
     # are the opposite: only what was **seen** gets reported.
     crawled, _disc, capped, dead_links, crawl_thr = crawl_links(f, origin, args.max_pages)
@@ -1090,7 +1090,7 @@ def bad_link_evidence(bad):
     + lists the branches for a human to judge:
       login/permission gate • WAF anti-bot challenge (blocking the checker, not crawlers) •
       geo blocking • misconfigured permissions • paywall
-    Lesson measured 2026-08-25: tigerless.com's /login and /user/Plan 403 bodies were
+    Lesson measured 2026-08-25: the pilot site's /login and /user/Plan 403 bodies were
     "Just a moment..." = a Cloudflare challenge page, **not a login gate at all** — my
     first version labeled them "login-gated entrances", generalizing from one case. Wrong.
     """

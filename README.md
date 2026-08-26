@@ -16,23 +16,23 @@ The whole repo is these three pieces:
 
 ## Quick start
 
-The whole repo is an Agent Skill — once installed, just say "check tigerless.com's SEO" and
+The whole repo is an Agent Skill — once installed, just say "check example.com's SEO" and
 the agent confirms the target, runs the script, reads the report, and explains by P0/P1/P2 how to fix each red item.
 Usage details live in [SKILL.md](SKILL.md).
 
-**Claude Code**
+**Claude Code** (`~/.claude/skills/` for all projects, `<repo>/.claude/skills/` for one project)
 
 ```bash
 git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
 ```
 
-**Codex**
+**Codex** (`~/.agents/skills/` for all projects, `<repo>/.agents/skills/` for one repo)
 
 ```bash
-git clone https://github.com/tigerless-labs/seo-ops.git ~/.codex/skills/seo-ops
+git clone https://github.com/tigerless-labs/seo-ops.git ~/.agents/skills/seo-ops
 ```
 
-For a project-level install, replace `~/.claude` with `<your repo>/.claude` (same for Codex). Update: `git pull`.
+Update: `git pull`. New skills are discovered at session start — if it doesn't show up, start a new session.
 
 **Or simply let your agent install it** — copy the whole block below to your agent:
 
@@ -40,9 +40,10 @@ For a project-level install, replace `~/.claude` with `<your repo>/.claude` (sam
 Install https://github.com/tigerless-labs/seo-ops as a skill:
 
 1. Clone it to wherever you load skills from, directory name seo-ops
-   (Claude Code: ~/.claude/skills/ or <repo>/.claude/skills/; Codex: ~/.codex/skills/)
+   (Claude Code: ~/.claude/skills/ or <repo>/.claude/skills/; Codex: ~/.agents/skills/ or <repo>/.agents/skills/)
 2. Install the whole repo, not just SKILL.md — scripts/ and references/ are runtime dependencies
 3. Install dependencies: python3 -c "import requests, yaml" || pip install -r <skill>/scripts/requirements.txt
 4. Smoke test: python3 <skill>/scripts/run.py --verify-only, it should print "✅ checklist and script in sync"
 5. Read SKILL.md, then tell me what it checks and what it doesn't
+6. If the skill doesn't appear, tell me to start a new session so it gets discovered
 ````

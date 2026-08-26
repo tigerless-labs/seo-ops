@@ -49,18 +49,18 @@ afterwards each page's appendix minds only its own page.
 ```yaml
 # ---- T1 brand name + official accounts (data source for the Organization entity) ----
 brand:
-  legal_name: {{Tigerless Insurance Services, Inc.}}   # matches the business license / registration papers
-  display_name: {{Tigerless}}                          # the one used on pages and in titles
-  name_zh: {{Taigelesi}}                               # if there is no Chinese name write "none" — don't invent one on the spot
-  alias: {{TGL}}                                       # short name / alias; leave blank if none
-  logo: {{https://www.tigerless.com/logo.png}}
+  legal_name: {{Acme Insurance Services, Inc.}}   # matches the business license / registration papers
+  display_name: {{Acme}}                          # the one used on pages and in titles
+  name_zh: {{Aikemei}}                               # if there is no Chinese name write "none" — don't invent one on the spot
+  alias: {{AIS}}                                       # short name / alias; leave blank if none
+  logo: {{https://www.example.com/logo.png}}
   # logo hard requirements: >=112×112 px, PNG/JPG (not SVG), square or near-square, opaque background
 
 sameas:            # official accounts as full URLs, one per line, not handles; the three sites and the socials point at one entity
-  - {{https://www.linkedin.com/company/tigerless}}
-  - {{https://x.com/tigerless}}
-  - {{https://www.youtube.com/@tigerless}}
-  - {{https://www.crunchbase.com/organization/tigerless}}
+  - {{https://www.linkedin.com/company/acme}}
+  - {{https://x.com/acme}}
+  - {{https://www.youtube.com/@acme}}
+  - {{https://www.crunchbase.com/organization/acme}}
 # Only officially owned accounts; third-party write-ups and directory listings don't count — including them weakens the entity signal
 
 # ---- T2 key-page list + one-line summaries (the value source for llms.txt) ----
@@ -105,7 +105,7 @@ ymyl: {{true / false}}
 # A missed flag = all of C21 silently disabled, not an error
 
 # ---- T5 title / description (finished copy, not an outline) -----------------
-title: {{How to pick F1 student insurance | Tigerless}}
+title: {{How to pick F1 student insurance | Acme}}
 description: {{Walks the school waiver requirements one by one — what insurance to buy during F1, common denial scenarios, and when to switch plans.}}
 # hard caps title <=60 / desc <=150 characters; Chinese pages in practice <=30 / <=75 chars by display width
 # unique per page — no copy-pasting with two words changed
@@ -180,7 +180,7 @@ reviewer:                              # delete the whole block if no real revie
 citations:
   - {{https://www.uscis.gov/…}}
   - {{https://www.healthcare.gov/…}}
-# Author: real name + title + verifiable credential. "The Tigerless editorial team" is not an author
+# Author: real name + title + verifiable credential. "The Acme editorial team" is not an author
 # The review must actually happen (R2 red line). Writing Dr. X when Dr. X never read the piece is fabricated credential endorsement —
 #   better no reviewer than one who never reviewed
 # citations use official sources: government sites, regulators, academic institutions, insurers' official policy pages
@@ -194,7 +194,7 @@ product:
   price_period: {{month}}
   coverage_limit: {{500000}}           # annual limit
   deductible: {{250}}
-  provider: {{Tigerless Insurance Services, Inc.}}
+  provider: {{Acme Insurance Services, Inc.}}
   valid_from: {{2026-01-01}}
   valid_through: {{2026-12-31}}
 # one field per slot — don't write a paragraph for engineers to dig numbers out of; numbers carry no currency symbols or units
