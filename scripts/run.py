@@ -1205,7 +1205,10 @@ def render_report(site, R, mode, ok_n, total_n, args):
             # 锚点用**标题**而不是 <a id="…">:GitHub 的 HTML 净化会把用户写的 id
             # 属性删掉(只保留它自己给标题生成的锚点),链接于是点不动。
             # 标题文本就写成 cid,slug 才可预期 —— 中文标题的 slug 各渲染器不一致。
-            lines += [f"### {cid}", "", f"**{name}**", "", "```"]
+            # 标题只放编号(锚点 slug 才可预期),条目名与证据各自打标签 ——
+            # 不标的话「编号 + 一行加粗」看着就像「序号 + 证据摘要」,读的人会
+            # 把检查项的名字当成结论。
+            lines += [f"### {cid}", "", f"**检查项**:{name}", "", "**证据**(完整,未截断):", "", "```"]
             lines += parts or ["(无)"]
             lines += ["```", ""]
     lines.insert(5, f"**结论:🔴 {counts['fail']}(其中 P0 {counts['fail_p0']})· "
