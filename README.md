@@ -33,23 +33,25 @@ Usage details live in [SKILL.md](SKILL.md).
 Install https://github.com/tigerless-labs/seo-ops as a skill.
 ````
 
-**Or install as a plugin** — Claude Code (type in the input box):
+**Or install as a plugin** — Claude Code: type in the **Claude Code input box** (not the shell):
 
 ```
 /plugin marketplace add tigerless-labs/seo-ops
 /plugin install seo-ops@seo-ops
 ```
 
-Codex:
+Codex: run in the **terminal**:
 
 ```bash
 codex plugin marketplace add tigerless-labs/seo-ops
 codex plugin add seo-ops@seo-ops
 ```
 
-If the skill doesn't show up, start a new session. Update: `/plugin marketplace update seo-ops` (Claude Code) / `codex plugin marketplace upgrade` (Codex).
+If the skill doesn't show up, start a new session.
+To update — Claude Code: re-run `/plugin install seo-ops@seo-ops` in the input box (it refreshes the marketplace first);
+Codex: in the terminal, `codex plugin marketplace upgrade seo-ops`, then `codex plugin add seo-ops@seo-ops`.
 
-**Once installed**, type `/seo-ops` — or just describe the task; both trigger it:
+**Once installed**, type `/seo-ops` in the agent's input box — or just describe the task; both trigger it:
 
 ```
 /seo-ops check example.com
