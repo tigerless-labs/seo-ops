@@ -2,7 +2,7 @@
 
 A checklist and checker for **SEO foundation engineering** — the machine-readable structure a site needs so search engines and AI retrieval can **fetch, read, index, and cite** it.
 
-**The only input is a URL.** No config, no code access, no framework integration — the checker fetches the site like a crawler and produces a pass/fail report with evidence.
+**The only required input is a URL.** Config exists but is optional; no code access, no framework integration — the checker fetches the site like a crawler and produces a pass/fail report with evidence.
 
 The whole repo is these three pieces:
 
