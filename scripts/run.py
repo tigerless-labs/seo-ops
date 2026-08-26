@@ -260,27 +260,45 @@ def is_local(host):
 
 PASS, FAIL, NA, HUMAN = "pass", "fail", "N.A.", "人审"
 
+def as_items(ev):
+    """证据一律是 list[str],一项一条,**项内不再拆**。
+
+    旧版把证据在内部就 `";".join(...)` 拍平成字符串,渲染附录时再 `split(";")` 猜回
+    结构 —— 而证据正文本身含分号(「15/15 页通过(启发式;90% 比例判定待接 headless)」
+    「/(81/81 图缺尺寸;7/81 图缺 alt 属性)」),于是劈在括号中间,括号不闭合。
+    这是 in-band delimiter:分隔符与数据挤在同一条通道里,数据一旦出现同样的字符
+    就分不清 —— 换个更罕见的分隔符只是把碰撞概率调小,不是修好。
+    唯一的修法是不要那次 round-trip:全程带着结构,**只在最后渲染那一步 join**。
+    """
+    if ev is None or ev == "":
+        return []
+    return [ev] if isinstance(ev, str) else [x for x in ev if x]
+
+
 class Result:
     def __init__(self):
-        self.rows = {}          # cid → (status, evidence)
-        self.page_rows = []     # (url, cid, status, evidence)
+        self.rows = {}          # cid → (status, list[str])
+        self.page_rows = []     # (url, cid, status, list[str])
 
     def set(self, cid, status, evidence=""):
-        self.rows[cid] = (status, evidence)
+        self.rows[cid] = (status, as_items(evidence))
 
     def page(self, url, cid, status, evidence=""):
-        self.page_rows.append((url, cid, status, evidence))
+        self.page_rows.append((url, cid, status, as_items(evidence)))
 
 def agg_pages(result, cid, pages_status):
     """按页结果聚合成条目结果:任一 fail → fail(证据列违规页 ≤5);空集 = N.A.,不算 pass。"""
     if not pages_status:
         result.set(cid, NA, "no-pages(页面样本为空或全部抓取失败)")
         return
-    fails = [(u, ev) for u, st, ev in pages_status if st == FAIL]
+    fails = [(u, as_items(ev)) for u, st, ev in pages_status if st == FAIL]
     if fails:
-        ev = ";".join(f"{u}({ev})" if ev else u for u, ev in fails[:5])
-        more = f" …共 {len(fails)} 页" if len(fails) > 5 else ""
-        result.set(cid, FAIL, ev + more)
+        # **一页 = 一项**。页内的多个问题拼在同一项里(括号内),不另起一项 ——
+        # 附录里一行就是一页,读的人扫一眼就知道哪几页坏了。
+        items = [f"{u}({'; '.join(evs)})" if evs else u for u, evs in fails[:5]]
+        if len(fails) > 5:
+            items.append(f"…共 {len(fails)} 页")
+        result.set(cid, FAIL, items)
     else:
         oks = [1 for _, st, _ in pages_status if st == PASS]
         result.set(cid, PASS, f"{len(oks)}/{len(pages_status)} 页通过")
@@ -356,7 +374,7 @@ def check_site(site, f, args):
         over = [(s, n) for s, n in sitemap_shards if n > CFG.SITEMAP_MAX_URLS_PER_FILE]
         if over:
             problems.append("单份超协议上限(须走 index 分片):" +
-                            ";".join(f"{s} {n} 条 > {CFG.SITEMAP_MAX_URLS_PER_FILE}" for s, n in over[:3]))
+                            [f"{s} {n} 条 > {CFG.SITEMAP_MAX_URLS_PER_FILE}" for s, n in over[:3]])
         def probe(u):
             # 不跟随重定向:sitemap 的语义是「这些 URL 就是规范地址」,**起点**必须 200。
             # 跟随了就等于只看终点 —— 一条 302 到别处的条目也会被算作可达(旧实现的洞)。
@@ -370,9 +388,9 @@ def check_site(site, f, args):
             return f"{u} → {rr['status'] or rr['err']}"
         bad = [x for x in f.map(probe, sitemap_urls[:args.sitemap_sample]) if x]
         if bad:
-            problems.append("抽查异常:" + ";".join(bad[:5]))
+            problems += [f"抽查异常:{b}" for b in bad[:5]]
         R.set("C2", FAIL if problems else PASS,
-              ";".join(problems) if problems else
+              problems or
               f"{len(sitemap_urls)} 条;抽查 {min(len(sitemap_urls), args.sitemap_sample)} 条可达")
 
     # ---------- C3 归一 301 ----------
@@ -389,7 +407,7 @@ def check_site(site, f, args):
             else:
                 finals.add(norm_url(rr["final_url"]))
         if errs:
-            R.set("C3", FAIL, ";".join(errs[:3]))
+            R.set("C3", FAIL, errs[:3])
         elif len(finals) == 1:
             R.set("C3", PASS, f"四变体归一 → {finals.pop()}")
         else:
@@ -433,9 +451,9 @@ def check_site(site, f, args):
         partial.append(f"crawl-capped(爬 {crawled} 页触上限 {args.max_pages})")
     if outside:
         # 找到的死链是确凿的,覆盖不全不影响这个结论 —— 只是可能还有没爬到的
-        R.set("C6", FAIL, ";".join([dead_ev] + partial))
+        R.set("C6", FAIL, dead_ev + partial)
     elif partial:
-        R.set("C6", NA, ";".join(partial) + ";覆盖不完整,不足以断言站内出链干净")
+        R.set("C6", NA, partial + ["覆盖不完整,不足以断言站内出链干净"])
     else:
         n = len(dead_links) - len(outside)
         R.set("C6", PASS, f"爬 {crawled} 页,sitemap 之外的站内出链无 4xx/5xx"
@@ -469,7 +487,7 @@ def check_site(site, f, args):
                     + f";而爬虫不发 Accept-Language → 实得 {bot['final_url']}(hop {bot['hops']})"
                       f",另一版对爬虫无可达 URL")
         R.set("C26", FAIL if div else PASS,
-              ";".join(div[:3]) if div else
+              div[:3] or
               f"抽查 {len(targets)} 页,同一 URL 在各 Accept-Language 下落点一致(语言差异全在 URL 上,合规)")
 
     # ---------- 页级:C8–C20 ----------
@@ -499,7 +517,7 @@ def check_site(site, f, args):
                 probs.append(f"canonical={cu}(自洽检查,声明域={majority_host})")
         elif cu != fu:
             probs.append(f"canonical={cu} ≠ {fu}")
-        st.append((p["url"], FAIL if probs else PASS, ";".join(probs)))
+        st.append((p["url"], FAIL if probs else PASS, probs))
     agg_pages(R, "C8", st)
 
     # C9 服务端直出(v1 启发式)
@@ -510,7 +528,7 @@ def check_site(site, f, args):
           for p in ok_pages]
     agg_pages(R, "C9", st)
     if R.rows.get("C9") and R.rows["C9"][0] == PASS:
-        R.set("C9", PASS, R.rows["C9"][1] + "(启发式;90% 比例判定待接 headless)")
+        R.set("C9", PASS, R.rows["C9"][1] + ["启发式;90% 比例判定待接 headless"])
 
     # C10 缓存公共版(双抓 diff,抽查)
     st = []
@@ -536,7 +554,7 @@ def check_site(site, f, args):
               or p["fetch"]["headers"].get("x-robots-tag") or "").lower()
         hits += [f'X-Robots-Tag="{xr}"' for tok in CFG.NOINDEX_TOKENS
                  if re.search(rf"\b{tok}\b", xr)][:1]
-        st.append((p["url"], FAIL if hits else PASS, ";".join(hits)))
+        st.append((p["url"], FAIL if hits else PASS, hits))
     agg_pages(R, "C23", st)
 
     # C11 title/description
@@ -552,7 +570,7 @@ def check_site(site, f, args):
         elif len(d) > CFG.DESC_MAX_CHARS: probs.append(f"desc {len(d)} 字符 > {CFG.DESC_MAX_CHARS}")
         if t: titles.setdefault(t, []).append(p["url"])
         if d: descs.setdefault(d, []).append(p["url"])
-        st.append((p["url"], FAIL if probs else PASS, ";".join(probs)))
+        st.append((p["url"], FAIL if probs else PASS, probs))
     def dup_ev(kind, groups):
         """重复项证据。旧版只写「title 重复×3」—— 不说重复的是哪一句,读的人无从下手,
         而且一组一条全拼进去,149 页的站能拼出三千多字符,把报告表格撑爆。
@@ -567,7 +585,7 @@ def check_site(site, f, args):
     agg_pages(R, "C11", st)
     if dup:
         prev = R.rows["C11"]
-        R.set("C11", FAIL, (prev[1] + ";" if prev[1] else "") + ";".join(dup))
+        R.set("C11", FAIL, prev[1] + dup)
 
     # C12 JSON-LD 基础项(类型 + 基础组必填参数)+ 负向扫描
     def typed_nodes(blocks):
@@ -625,13 +643,13 @@ def check_site(site, f, args):
                         missing = [fld for fld in req if not n.get(fld)]
                         if missing:
                             probs.append(f"{t} 缺参数:{','.join(missing)}")
-        st.append((p["url"], FAIL if probs else PASS, ";".join(sorted(set(probs)))))
+        st.append((p["url"], FAIL if probs else PASS, sorted(set(probs))))
     agg_pages(R, "C12", st)
     if rejected_hit:
         prev = R.rows["C12"]
-        ev = ";".join(f"不采纳类型 {t}({CFG.LD_REJECTED_TYPES[t]})出现于 {len(us)} 页:{us[0]}"
-                      for t, us in sorted(rejected_hit.items()))
-        R.set("C12", FAIL, (prev[1] + ";" if prev[1] else "") + ev)
+        ev = [f"不采纳类型 {t}({CFG.LD_REJECTED_TYPES[t]})出现于 {len(us)} 页:{us[0]}"
+              for t, us in sorted(rejected_hit.items())]
+        R.set("C12", FAIL, prev[1] + ev)
 
     # C13 空壳 200
     st = [(p["url"],
@@ -640,13 +658,13 @@ def check_site(site, f, args):
           for p in ok_pages]
     agg_pages(R, "C13", st)
     prev = R.rows["C13"]
-    R.set("C13", prev[0], prev[1] + ";retired 抽查未接(need-topic-queue)")
+    R.set("C13", prev[0], prev[1] + ["retired 抽查未接(need-topic-queue)"])
 
     # C14 body-hide 脚本
     st = []
     for p in ok_pages:
         hits = [pat for pat in CFG.BODY_HIDE_PATTERNS if re.search(pat, p["html"], flags=re.I)]
-        st.append((p["url"], FAIL if hits else PASS, ";".join(hits)))
+        st.append((p["url"], FAIL if hits else PASS, hits))
     agg_pages(R, "C14", st)
 
     # C15 渲染成本 × 声明
@@ -693,7 +711,7 @@ def check_site(site, f, args):
             if prev_l is not None and l > prev_l + 1:
                 probs.append(f"跳级 h{prev_l}→h{l}"); break
             prev_l = l
-        st.append((p["url"], FAIL if probs else PASS, ";".join(probs)))
+        st.append((p["url"], FAIL if probs else PASS, probs))
     agg_pages(R, "C17", st)
 
     # C18 图片属性齐(width/height + alt)
@@ -708,7 +726,7 @@ def check_site(site, f, args):
         if no_size: probs.append(f"{len(no_size)}/{len(imgs)} 图缺尺寸")
         if no_alt: probs.append(f"{len(no_alt)}/{len(imgs)} 图缺 alt 属性")
         st.append((p["url"], FAIL if probs else PASS,
-                   ";".join(probs) if probs else f"{len(imgs)} 图尺寸+alt 齐"))
+                   probs or f"{len(imgs)} 图尺寸+alt 齐"))
     agg_pages(R, "C18", st)
 
     # C19 OG 全套
@@ -733,7 +751,7 @@ def check_site(site, f, args):
         if ogt and (page_ld & CFG.ARTICLE_LD_TYPES) and ogt != "article":
             probs.append(f"og:type={ogt},但页面 JSON-LD 自称 "
                          f"{','.join(sorted(page_ld & CFG.ARTICLE_LD_TYPES))} → 应为 article")
-        st.append((p["url"], FAIL if probs else PASS, ";".join(probs)))
+        st.append((p["url"], FAIL if probs else PASS, probs))
     agg_pages(R, "C19", st)
 
     # C20 跳转链(只统计成功抓取的页)
@@ -756,7 +774,7 @@ def check_site(site, f, args):
             st.append((p["url"], NA, "http 页,无混合内容可言")); continue
         hits = sub_re.findall(p["html"]) + link_re.findall(p["html"])
         st.append((p["url"], FAIL if hits else PASS,
-                   f"{len(hits)} 处 http:// 子资源:" + ";".join("http://" + h for h in hits[:3])
+                   [f"{len(hits)} 处 http:// 子资源"] + ["http://" + h for h in hits[:3]]
                    if hits else ""))
     agg_pages(R, "C25", st)
 
@@ -897,7 +915,7 @@ def crux_check(site, f):
         if inp and float(inp) > CFG.CWV_INP_MS: probs.append(f"INP {inp}ms")
         if cls and float(cls) > CFG.CWV_CLS: probs.append(f"CLS {cls}")
         return (FAIL if probs else PASS,
-                ";".join(probs) or f"LCP {lcp} / INP {inp} / CLS {cls}")
+                probs or f"LCP {lcp} / INP {inp} / CLS {cls}")
     except Exception as e:
         return NA, f"CrUX 异常:{str(e)[:80]}"
 
@@ -1004,7 +1022,7 @@ def bad_link_evidence(bad):
     「登录态入口」,是拿个案倒推通例,错了。
     """
     def fmt(rows):
-        return ";".join(f"{u} → {st}(来源 {src})" for u, st, src in rows[:5])
+        return [f"{u} → {st}(来源 {src})" for u, st, src in rows[:5]]
     restricted = [r for r in bad if r[1] in (401, 403)]
     broken = [r for r in bad if r[1] not in (401, 403)]
     parts = []
@@ -1015,7 +1033,7 @@ def bad_link_evidence(bad):
                      f"成因需人确认 — 登录态 / WAF 挑战 / 地域限制 / 权限配错。"
                      f"正解:未登录时不输出该链接或加 rel=nofollow + robots.txt Disallow + 不进 sitemap;"
                      f"若为 WAF 则核对规则是否放行已验证爬虫):{fmt(restricted)}")
-    return ";".join(parts)
+    return parts
 
 def crawl_links(f, origin, max_pages):
     """BFS 内链;返回 (爬取页数, 发现的站内 URL 集合(norm), 是否触顶, 死链 [(url, status, 来源页)])。
@@ -1159,15 +1177,19 @@ def render_report(site, R, mode, ok_n, total_n, args):
             elif status == NA: counts["na"] += 1
             # 去掉 origin 前缀:报告抬头已写明目标站,每条再重复一遍纯属噪声。
             # (库里仍存绝对 URL —— 机读那份不动。)
-            ev = ev.replace(site["origin"], "")
+            parts = [x.replace(site["origin"], "").strip() for x in ev]
+            parts = [x for x in parts if x]
+            # **join 只发生在这里**,而且 join 完不再拆回去 —— 证据一路是 list[str],
+            # 附录直接遍历它出行,表格摘要 join 前几项。旧版在内部 join、渲染时
+            # split(";") 猜回结构,证据正文里的分号就把行劈在括号中间。
+            flat = "; ".join(parts)
             # 表格里只放摘要,完整证据落到文末证据区。这不是省事,是结构上的必需:
             # 单元格里放变长文本,行高与折行由渲染器决定,我们控制不了 —— 旧版靠
             # 「截 300 字符」压,压不住(300 字符在窄列里十几行,一撑就叠到下一行)。
             # 代码块没有列宽、不参与表格解析,放多长、带什么字符都不会串行。
-            parts = [x.strip() for x in re.split(r";\s*", ev) if x.strip()]
-            summary = md_cell(ev, CFG.EVIDENCE_SUMMARY_WIDTH)
-            if disp_width(md_cell(ev)) > CFG.EVIDENCE_SUMMARY_WIDTH:
-                summary += f" [详见](#ev-{cid.lower()})"
+            summary = md_cell(flat, CFG.EVIDENCE_SUMMARY_WIDTH)
+            if disp_width(md_cell(flat)) > CFG.EVIDENCE_SUMMARY_WIDTH:
+                summary += f" [详见](#{cid.lower()})"
                 details.append((cid, name, parts))
             # 说明列:指向该条的正本 —— 判定标准、常见错法、权威依据、怎么改都在那篇。
             # 报告只放链接不放正文:报告要能两次跑逐字相同,而解释一旦写进来就得跟着
@@ -1180,7 +1202,10 @@ def render_report(site, R, mode, ok_n, total_n, args):
         lines += ["## 证据(完整,未截断)", "",
                   "表格里的是摘要;下面这份是全量,一行一条。完整证据同时进 checks.db。", ""]
         for cid, name, parts in details:
-            lines += [f'<a id="ev-{cid.lower()}"></a>', "", f"**{cid}** · {name}", "", "```"]
+            # 锚点用**标题**而不是 <a id="…">:GitHub 的 HTML 净化会把用户写的 id
+            # 属性删掉(只保留它自己给标题生成的锚点),链接于是点不动。
+            # 标题文本就写成 cid,slug 才可预期 —— 中文标题的 slug 各渲染器不一致。
+            lines += [f"### {cid}", "", f"**{name}**", "", "```"]
             lines += parts or ["(无)"]
             lines += ["```", ""]
     lines.insert(5, f"**结论:🔴 {counts['fail']}(其中 P0 {counts['fail_p0']})· "
@@ -1206,10 +1231,14 @@ def save_db(db_path, site_id, R):
         conn.execute(f"CREATE TABLE IF NOT EXISTS checks({','.join(c + ' TEXT' for c in COLS)},"
                      f" PRIMARY KEY(site, url, rule_id))")
     ts, ph = NOW.isoformat(), ",".join("?" * len(COLS))
+    # 一项一行。证据本身是 list[str] 且每项单行,所以换行是**不会与数据碰撞**的
+    # 分隔符 —— 用分号就会,证据正文里到处是分号。要还原成列表:evidence.split("\n")。
     for cid, (status, ev) in R.rows.items():
-        conn.execute(f"REPLACE INTO checks VALUES({ph})", (site_id, "@site", cid, status, ev, ts))
+        conn.execute(f"REPLACE INTO checks VALUES({ph})",
+                     (site_id, "@site", cid, status, "\n".join(ev), ts))
     for url, cid, status, ev in R.page_rows:
-        conn.execute(f"REPLACE INTO checks VALUES({ph})", (site_id, url, cid, status, ev, ts))
+        conn.execute(f"REPLACE INTO checks VALUES({ph})",
+                     (site_id, url, cid, status, "\n".join(ev), ts))
     conn.commit(); conn.close()
 
 # ───────────────────────── main ─────────────────────────
