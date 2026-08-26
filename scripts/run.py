@@ -1099,7 +1099,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
             # 说明列:指向该条的正本 —— 判定标准、常见错法、权威依据、怎么改都在那篇。
             # 报告只放链接不放正文:报告要能两次跑逐字相同,而解释一旦写进来就得跟着
             # 正本改,迟早对不上;链接永远指向当下的正本。
-            doc = f"references/checklist/references/{cid}.md"
+            doc = f"{CFG.DOC_BASE_URL}/{cid}.md"
             lines.append(f"| {cid} | {prio} | {name} | {ICON[status]} | {ev} | [{cid} 说明]({doc}) |")
         lines.append("")
     lines.insert(5, f"**结论:🔴 {counts['fail']}(其中 P0 {counts['fail_p0']})· "

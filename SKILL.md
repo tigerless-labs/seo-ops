@@ -44,8 +44,9 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 
 ### 报告出来之后
 
-**报告本身就是结论,不用主动逐条讲解。** 每行带一列 **说明**,链到该条的正本
-`references/checklist/references/C<N>.md` —— 判定标准、常见错法、权威依据、怎么改都在那篇。
+**报告本身就是结论,不用主动逐条讲解。** 每行带一列 **说明**,是该条正本的 GitHub 链接
+—— 那是给**读报告的人**点的(报告发到哪都打得开)。**你自己要读的是本地那份**:
+`references/checklist/references/C<N>.md`。
 
 **用户问到哪一条,先读 `references/checklist/references/C<N>.md` 再答**
 (如问 C12 就读 `references/checklist/references/C12.md`):「为什么是问题」取自 `## 介绍`,

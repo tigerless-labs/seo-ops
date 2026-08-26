@@ -211,6 +211,10 @@ SSR_MIN_TEXT_CHARS = 500      # v1 启发式:禁 JS 抓取正文低于此值 = �
 CACHE_DIFF_SAMPLE_SIZE = 10   # 同 URL 双抓 diff 的抽查页数
 
 # ── 报告渲染 ─────────────────────────────────────────
+# 报告「说明」列的链接基址。给 GitHub URL 是为了报告发到哪都点得开(相对路径只有
+# 装了 skill 的人能用)。**仓库私有时对外人仍是 404** —— 要给施工方看就得改 public。
+# 想让验收文档引用「出报告那一刻」的说明,把 main 换成当次的 commit SHA。
+DOC_BASE_URL = "https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references"
 EVIDENCE_MAX_CHARS = 300      # 单格证据上限;超出截断并指向 checks.db(库里存全量)
 
 # ── C11 title / description ──────────────────────────
@@ -323,6 +327,7 @@ TUNABLE = {
     "OG_IMAGE_WIDTH":                      "C19:og:image 建议宽",
     "OG_IMAGE_HEIGHT":                     "C19:og:image 建议高",
     "MAX_REDIRECT_HOPS":                   "C3:归一跳数上限(一跳到位才不掉权重)",
+    "DOC_BASE_URL":                        "报告「说明」列的链接基址;换 main 为 commit SHA 可钉住版本",
     "EVIDENCE_MAX_CHARS":                  "报告里单格证据的字符上限;完整证据始终进 checks.db",
 }
 
