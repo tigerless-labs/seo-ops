@@ -9,7 +9,7 @@
 retrieval need to fetch, read, index, and cite it.**
 
 The only required input is a URL: the checker fetches the site like a crawler — no code access,
-no framework integration — and produces a pass/fail report with evidence.
+no framework integration — and produces a pass/fail [report](references/report.example.md) with evidence.
 
 The whole repo is these three pieces:
 
