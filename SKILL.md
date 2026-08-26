@@ -47,7 +47,8 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 **报告本身就是结论,不用主动逐条讲解。** 每行带一列 **说明**,链到该条的正本
 `references/checklist/references/C<N>.md` —— 判定标准、常见错法、权威依据、怎么改都在那篇。
 
-**用户问到哪一条,先读那一条的正本再答**:「为什么是问题」取自 `## 介绍`,
+**用户问到哪一条,先读 `references/checklist/references/C<N>.md` 再答**
+(如问 C12 就读 `references/checklist/references/C12.md`):「为什么是问题」取自 `## 介绍`,
 「怎么改」取自 `## 实现指导`。**不要凭证据推断作答** —— 证据只说明哪几页不合格,
 说不出这条为什么存在、正解是什么、权威依据在哪。
 
