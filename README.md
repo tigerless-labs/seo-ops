@@ -46,3 +46,11 @@ git clone https://github.com/tigerless-labs/seo-ops.git ~/.agents/skills/seo-ops
 ```
 
 Update: `git pull`. New skills are discovered at session start — if it doesn't show up, start a new session.
+
+**Once installed**, type `/seo-ops` — or just describe the task; both trigger it:
+
+```
+/seo-ops check example.com
+```
+
+The agent introduces the checks, confirms live site vs code review, runs, and explains the red items.
