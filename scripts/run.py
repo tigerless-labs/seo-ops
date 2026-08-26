@@ -1111,9 +1111,21 @@ def md_cell(t, width=None, soft_break=True):
     if width:
         out, w = [], 0
         for c in t:
-            cw = 2 if unicodedata.east_asian_width(c) in "WF" else 1
+            # U+200B 是我们自己插的折行点,不占显示宽 —— 与 disp_width 同一口径
+            cw = 0 if c == "\u200b" else (2 if unicodedata.east_asian_width(c) in "WF" else 1)
             if w + cw > width:
-                return "".join(out).rstrip("\u200b ") + "…"
+                s = "".join(out)
+                # 截断点回退到最近的折行处(空格 / 我们插的 U+200B / CJK 边界):
+                # 「need-key-declaration(config.INDEXNOW_…」这种从 token 中间劈开
+                # 的摘要,读的人只能瞪着半个词猜。回退掉超过一半宽度就放弃,保留硬截。
+                for i in range(len(s) - 1, -1, -1):
+                    wide = unicodedata.east_asian_width(s[i]) in "WF"
+                    if s[i] in " \u200b" or wide:
+                        cand = s[:i + 1] if wide else s[:i]
+                        if disp_width(cand) >= width // 2:
+                            s = cand
+                        break
+                return s.rstrip("\u200b ") + "…"
             out.append(c); w += cw
     return t
 

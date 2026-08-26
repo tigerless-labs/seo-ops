@@ -84,4 +84,4 @@ MAX_REDIRECT_HOPS: 1
 DOC_BASE_URL: "https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references"
 
 # 报告表格里证据摘要的显示宽上限;完整证据在报告末尾证据区,不截断
-EVIDENCE_SUMMARY_WIDTH: 40
+EVIDENCE_SUMMARY_WIDTH: 22
