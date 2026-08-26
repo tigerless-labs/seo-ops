@@ -960,7 +960,7 @@ ICON = {PASS: "✅ pass", FAIL: "🔴 fail", NA: "⚪ N.A.", HUMAN: "👤 人审
 
 def verify_checklist_sync():
     """漂移守卫:CHECKS(报告骨架)必须与 references/checklist/checklist.md 的条目一致。
-    检查逻辑无法自动生成(每条手写),但「有哪些条目、什么优先级、在哪一节」必须对得上;
+    检查逻辑无法自动生成(每条手写),但「有哪些条目、什么优先级、在哪一节、叫什么名字」必须对得上;
     对不上就喊出来,不让报告默默说谎。
 
     返回漂移消息列表(空 = 对齐)—— 打印是给人看的,返回值是给 CI 看的。"""
@@ -971,10 +971,10 @@ def verify_checklist_sync():
     for line in md.read_text().splitlines():
         if line.startswith("## ") and re.match(r"## [一二三]、", line):
             sec += 1
-        m = re.match(r"\|\s*(C\d+)\s*\|\s*(P\d)\s*\|", line)
+        m = re.match(r"\|\s*(C\d+)\s*\|\s*(P\d)\s*\|\s*([^|]*?)\s*\|", line)
         if m and sec >= 0:
-            doc.append((sec, m.group(1), m.group(2)))
-    code = [(i, cid, prio) for i, (_, items) in enumerate(CHECKS) for cid, prio, _ in items]
+            doc.append((sec, m.group(1), m.group(2), m.group(3)))
+    code = [(i, cid, prio, name) for i, (_, items) in enumerate(CHECKS) for cid, prio, name in items]
     if doc == code:
         return []
     msgs = []
@@ -988,6 +988,13 @@ def verify_checklist_sync():
             msgs.append(f"⚠️  漂移:{cid} 优先级 checklist={d[cid][2]} / 脚本={c[cid][2]}")
         elif d[cid][0] != c[cid][0]:
             msgs.append(f"⚠️  漂移:{cid} 所属节 checklist=第{d[cid][0]+1}节 / 脚本=第{c[cid][0]+1}节")
+        elif d[cid][3] != c[cid][3]:
+            # 名字也要对齐:报告印的是脚本里的名字,清单印的是自己的那份 —— 两处分头改过
+            # 两轮了,每次都靠手工同步。它不影响判定,但会让同一条检查在两份文档里
+            # 叫不同的名字,读的人以为是两条。
+            msgs.append(f"⚠️  漂移:{cid} 名字不一致\n"
+                        f"      checklist:{d[cid][3]}\n"
+                        f"      脚本    :{c[cid][3]}")
     for m in msgs:
         print(m, flush=True)
     return msgs
