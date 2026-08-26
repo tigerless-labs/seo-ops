@@ -1,14 +1,9 @@
 # Checklist (C set, static structure checks)
 
-> **Definition: the machine-footprint checklist for all code** — the object of inspection is the **machine-readable surface** of the final HTTP/HTML output;
-> who produced it doesn't matter (backend templates, frontend code, a third-party script's output — if a crawler can see it, it's covered);
-> the dividing line is "machine-readable surface / human-perceivable surface", not frontend/backend — styling, interaction, experience, and internal code quality are out of scope.
-> **Single purpose: static structure checks** — only "is the required structure present and correct"; no content quality, no effect, no process.
-> The checker (a manually run check script) implements sections 1 and 2 (each item lands in the `checks` table); section 3 is human review.
-> Boundary: all green ≠ fully compliant — content truth/quality review belongs to the content management team (YMYL goes to the professional department, R2),
-> red lines live in conformance, process verdicts in methods; this system provides only structural slots and structural validation.
-> Scope: **site-level** (once per site) / **per indexed page** / **conditional** (triggered by a flag or site config, never by page type).
-> Each item has its own full write-up under [references/](references/) (an intro plus an implementation-guidance section); this table is the index and verdict overview.
+> **Static structure checks** on the machine-readable surface of the final HTTP/HTML output — only "is the required structure present and correct". Who produced it doesn't matter; content quality and everything human-perceivable are out of scope (full boundary: [SKILL.md](../../SKILL.md) "Scope"; the human gates: [redlines.md](../../redlines.md)). **All green ≠ fully compliant.**
+> The checker implements sections 1 and 2 (each item lands in the `checks` table); section 3 is human review.
+> Grouping: **site-level** (once per site) / **per indexed page** / **conditional** (triggered by a flag or site config, never by page type).
+> Each item's full write-up lives in [references/](references/) (introduction + implementation guidance); this table is the index and verdict overview.
 
 ## 1. Site-level (once per site)
 
