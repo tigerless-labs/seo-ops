@@ -13,15 +13,15 @@ Review a site's templates and output against the **C set** (26 structural checks
 When this skill triggers, **spend two or three sentences telling the user what they've got**, then start:
 
 > This is a set of 26 SEO/GEO structural checks (the C set). They test whether crawlers can fetch, read, index, and cite a site
-> — binary structural questions, not ranking quality. I can **run the checker against the live site and produce a report**,
-> or **review code/templates against the checks one by one**. Which do you want?
+> — binary structural questions, not ranking quality. I can **run the checker and produce a report** — against a live domain
+> or a local deployment (`http://localhost:<port>`), both work — or **review code/templates against the checks one by one**. Which do you want?
 
 **Confirm intent before starting**, because "check the live site" and "check the code" are two different jobs — guessing wrong wastes a full run:
 
 | The user gave | Path | Section to follow |
 |---|---|---|
-| a domain / URL | run the checker, produce a report | "**Run the checker**" → then "**Read the report**" |
-| code, templates, a PR, page files | no script; review the machine-readable output surface against the C set item by item | "**Scope**" sets the boundary; read `references/checklist/checklist.md` for the items |
+| a domain / URL (live or localhost) | run the checker, produce a report | "**Run the checker**" → then "**Read the report**" |
+| code, templates, a PR, page files | no script; review the machine-readable output surface against the C set item by item | "**Scope**" sets the boundary; `references/checklist/checklist.md` lists the items — but judge each one by its canonical doc `references/checklist/references/C<N>.md`, not by the index row alone |
 
 Once intent is confirmed, **do not keep asking for permission**. Everything else:
 the user asks why a check exists / how to fix it → "**After the report**";
