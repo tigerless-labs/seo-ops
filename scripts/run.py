@@ -1086,6 +1086,11 @@ def render_report(site, R, mode, ok_n, total_n, args):
                 if prio == "P0": counts["fail_p0"] += 1
             elif status == PASS: counts["pass"] += 1
             elif status == NA: counts["na"] += 1
+            # 渲染层的两处收拾(库里仍存绝对 URL 与原始分隔符,机读那份不动):
+            #   1. 去掉 origin 前缀 —— 报告抬头已写明目标站,每条再重复一遍纯属噪声
+            #   2. 分号/逗号后补空格 —— 不加空格时整串 URL 是一个「不可断行 token」,
+            #      实测最长 297 字符,渲染器无处折行,列宽撑爆就是叠字的成因
+            ev = ev.replace(site["origin"], "").replace(";", "; ").replace(",", ", ")
             ev = ev.replace("|", "\\|")
             # 证据兜底截断:C11 曾在 149 页的站上拼出 3352 字符,把表格撑到渲染重叠。
             # 完整证据仍进 checks.db —— 报告给人读,库给机器读,截断只发生在前者。
