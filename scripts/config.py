@@ -215,7 +215,10 @@ CACHE_DIFF_SAMPLE_SIZE = 10   # 同 URL 双抓 diff 的抽查页数
 # 装了 skill 的人能用)。**仓库私有时对外人仍是 404** —— 要给施工方看就得改 public。
 # 想让验收文档引用「出报告那一刻」的说明,把 main 换成当次的 commit SHA。
 DOC_BASE_URL = "https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references"
-EVIDENCE_MAX_CHARS = 300      # 单格证据上限;超出截断并指向 checks.db(库里存全量)
+# 表格里的证据只放摘要,完整证据在报告末尾的「证据」区(代码块,不受列宽约束、
+# 不参与表格解析)。摘要按**显示宽度**截断(中日韩字符算 2)——按字符数截没有用:
+# 300 个字符在窄列里是十几行,行高一撑就叠到下一行去,这正是旧版报告串行的成因。
+EVIDENCE_SUMMARY_WIDTH = 40   # 表格证据摘要的显示宽上限;完整证据不截断
 
 # ── C11 title / description ──────────────────────────
 TITLE_MAX_CHARS = 60
@@ -328,7 +331,7 @@ TUNABLE = {
     "OG_IMAGE_HEIGHT":                     "C19:og:image 建议高",
     "MAX_REDIRECT_HOPS":                   "C3:归一跳数上限(一跳到位才不掉权重)",
     "DOC_BASE_URL":                        "报告「说明」列的链接基址;换 main 为 commit SHA 可钉住版本",
-    "EVIDENCE_MAX_CHARS":                  "报告里单格证据的字符上限;完整证据始终进 checks.db",
+    "EVIDENCE_SUMMARY_WIDTH":              "报告表格里证据摘要的显示宽上限;完整证据在报告末尾证据区,不截断",
 }
 
 

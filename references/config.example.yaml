@@ -83,5 +83,5 @@ MAX_REDIRECT_HOPS: 1
 # 报告「说明」列的链接基址;换 main 为 commit SHA 可钉住版本
 DOC_BASE_URL: "https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references"
 
-# 报告里单格证据的字符上限;完整证据始终进 checks.db
-EVIDENCE_MAX_CHARS: 300
+# 报告表格里证据摘要的显示宽上限;完整证据在报告末尾证据区,不截断
+EVIDENCE_SUMMARY_WIDTH: 40

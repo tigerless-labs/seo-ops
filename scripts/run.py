@@ -29,7 +29,7 @@ C1–C20、C23–C26;C21/C22 为人审项,报表列出不判。
 只读线上 HTTP/HTML 产出,栈无关;真实浏览器 UA(Cloudflare 拦伪装爬虫 UA)。
 默认单线程(config.FETCH_CONCURRENCY = 1);并发是留着的接缝,打开前须重做对拍。
 """
-import argparse, collections, json, re, sqlite3, sys, threading, time, traceback
+import argparse, collections, json, re, sqlite3, sys, threading, time, traceback, unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from http.cookiejar import DefaultCookiePolicy
@@ -1057,6 +1057,76 @@ def crawl_links(f, origin, max_pages):
                     frontier.append(n)
     return len(seen_fetch), discovered, bool(frontier), dead, thr
 
+# ── markdown 表格的安全出口 ───────────────────────────
+# 表格是 markdown 里最脆的结构:一个裸 | 多切一列、一个换行断成两行、一串没有空格的
+# 长 token 撑爆列宽叠到下一行。证据来自被检站点(title、脚本片段、正则),这三样都可能有。
+# 所以**所有写进单元格的文本只走 md_cell**,长证据根本不进单元格(见 render_report)。
+
+def disp_width(t):
+    """显示宽度:中日韩与全角标点算 2 —— 按字符数截断在中文表格里没有意义。
+    零宽空格是我们自己插的折行点,不占宽,量的时候要摘掉。"""
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1
+               for c in t.replace("\u200b", ""))
+
+
+def md_cell(t, width=None, soft_break=True):
+    """把任意文本变成**不可能破坏表格**的单元格内容。
+
+    做四件事,顺序有讲究:
+      1. 换行折成空格 —— 裸换行会把一行表格断成两行,这是最难查的一种串行
+      2. `|` 转义 —— 否则多切一列,整行错位
+      3. 长 token 里插零宽空格 —— 渲染器只在空格/CJK 处折行,`/a/b?c=d&e=f` 这种
+         对它是一个不可断的字;插了 U+200B 才有折行点(不影响复制出来的文本)
+      4. 按显示宽度硬截 —— 截断是最后一道,前面三步都做完才知道真实宽度
+    """
+    t = re.sub(r"[\r\n]+", " ", str(t)).strip()
+    t = t.replace("|", "\\|")
+    if soft_break:            # 固定词表(如检查名)不插 —— 它们本来就断得开,插了只脏了复制出来的文本
+        t = re.sub(r"([/=&_,;:?-])(?=[^\s])", "\\1\u200b", t)
+    if width:
+        out, w = [], 0
+        for c in t:
+            cw = 2 if unicodedata.east_asian_width(c) in "WF" else 1
+            if w + cw > width:
+                return "".join(out).rstrip("\u200b ") + "…"
+            out.append(c); w += cw
+    return t
+
+
+def assert_table_sane(lines):
+    """生成后自检:表格必须**每行同列数**,且没有撑爆列宽的不可断 token。
+
+    有了 md_cell 还要这道,是因为 md_cell 靠人记得调用 —— 加一列、加一处拼接就可能
+    绕过它。自检让「忘了调用」当场炸在生成阶段,而不是等人看报告时发现叠字。
+    """
+    UNBREAKABLE_MAX = 40          # 单个不可断 token 的显示宽上限(CJK 本身可断行,不算)
+    run, start = [], 0
+    def check(block, first):
+        if len(block) < 2:
+            return
+        ncol = [len(re.split(r"(?<!\\)\|", ln)) for ln in block]
+        if len(set(ncol)) != 1:
+            bad = block[ncol.index(next(n for n in ncol if n != ncol[0]))]
+            raise RuntimeError(f"报告表格列数不一致(第 {first} 行起):{bad[:120]}")
+        for ln in block:
+            # 链接目标不占版面(渲染出来只有链接文字),先摘掉再量宽度 ——
+            # 否则一条 GitHub URL 就会把这道守卫变成天天误报的噪声。
+            ln = re.sub(r"\]\([^)]*\)", "]", ln)
+            for cell in re.split(r"(?<!\\)\|", ln):
+                for tok in re.split(r"[\s\u200b]+", cell):
+                    seg = re.sub(r"[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]", " ", tok)
+                    longest = max((len(x) for x in seg.split()), default=0)
+                    if longest > UNBREAKABLE_MAX:
+                        raise RuntimeError(f"报告表格有撑爆列宽的长 token({longest} 宽):{tok[:80]}")
+    for i, ln in enumerate(lines):
+        if ln.startswith("|"):
+            if not run: start = i + 1
+            run.append(ln)
+        else:
+            check(run, start); run = []
+    check(run, start)
+
+
 def render_report(site, R, mode, ok_n, total_n, args):
     lines = [f"# checker 报告:{site['id']}",
              "",
@@ -1076,6 +1146,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
                      (f" …共 {len(R.fetch_fails)}" if len(R.fetch_fails) > 6 else ""))
         lines.append("")
     counts = {"fail_p0": 0, "fail": 0, "pass": 0, "na": 0}
+    details = []            # (cid, name, 完整证据的分行)—— 表格之外的证据区
     for sec, items in CHECKS:
         lines += [f"## {sec}", "",
                   "| ID | 优先级 | 检查 | 结果 | 证据 | 说明 |", "|---|---|---|---|---|---|"]
@@ -1086,24 +1157,35 @@ def render_report(site, R, mode, ok_n, total_n, args):
                 if prio == "P0": counts["fail_p0"] += 1
             elif status == PASS: counts["pass"] += 1
             elif status == NA: counts["na"] += 1
-            # 渲染层的两处收拾(库里仍存绝对 URL 与原始分隔符,机读那份不动):
-            #   1. 去掉 origin 前缀 —— 报告抬头已写明目标站,每条再重复一遍纯属噪声
-            #   2. 分号/逗号后补空格 —— 不加空格时整串 URL 是一个「不可断行 token」,
-            #      实测最长 297 字符,渲染器无处折行,列宽撑爆就是叠字的成因
-            ev = ev.replace(site["origin"], "").replace(";", "; ").replace(",", ", ")
-            ev = ev.replace("|", "\\|")
-            # 证据兜底截断:C11 曾在 149 页的站上拼出 3352 字符,把表格撑到渲染重叠。
-            # 完整证据仍进 checks.db —— 报告给人读,库给机器读,截断只发生在前者。
-            if len(ev) > CFG.EVIDENCE_MAX_CHARS:
-                ev = ev[:CFG.EVIDENCE_MAX_CHARS].rstrip() + f"…(已截断,完整见 checks.db 的 {cid} 行)"
+            # 去掉 origin 前缀:报告抬头已写明目标站,每条再重复一遍纯属噪声。
+            # (库里仍存绝对 URL —— 机读那份不动。)
+            ev = ev.replace(site["origin"], "")
+            # 表格里只放摘要,完整证据落到文末证据区。这不是省事,是结构上的必需:
+            # 单元格里放变长文本,行高与折行由渲染器决定,我们控制不了 —— 旧版靠
+            # 「截 300 字符」压,压不住(300 字符在窄列里十几行,一撑就叠到下一行)。
+            # 代码块没有列宽、不参与表格解析,放多长、带什么字符都不会串行。
+            parts = [x.strip() for x in re.split(r";\s*", ev) if x.strip()]
+            summary = md_cell(ev, CFG.EVIDENCE_SUMMARY_WIDTH)
+            if disp_width(md_cell(ev)) > CFG.EVIDENCE_SUMMARY_WIDTH:
+                summary += f" [详见](#ev-{cid.lower()})"
+                details.append((cid, name, parts))
             # 说明列:指向该条的正本 —— 判定标准、常见错法、权威依据、怎么改都在那篇。
             # 报告只放链接不放正文:报告要能两次跑逐字相同,而解释一旦写进来就得跟着
             # 正本改,迟早对不上;链接永远指向当下的正本。
             doc = f"{CFG.DOC_BASE_URL}/{cid}.md"
-            lines.append(f"| {cid} | {prio} | {name} | {ICON[status]} | {ev} | [{cid} 说明]({doc}) |")
+            lines.append(f"| {cid} | {prio} | {md_cell(name, soft_break=False)} | {ICON[status]} | {summary} "
+                         f"| [{cid} 说明]({doc}) |")
         lines.append("")
+    if details:
+        lines += ["## 证据(完整,未截断)", "",
+                  "表格里的是摘要;下面这份是全量,一行一条。完整证据同时进 checks.db。", ""]
+        for cid, name, parts in details:
+            lines += [f'<a id="ev-{cid.lower()}"></a>', "", f"**{cid}** · {name}", "", "```"]
+            lines += parts or ["(无)"]
+            lines += ["```", ""]
     lines.insert(5, f"**结论:🔴 {counts['fail']}(其中 P0 {counts['fail_p0']})· "
                     f"✅ {counts['pass']} · ⚪ N.A. {counts['na']} · 👤 人审 2**")
+    assert_table_sane(lines)          # 忘了走 md_cell 就炸在这里,不等人看报告时才发现
     return "\n".join(lines)
 
 COLS = ("site", "url", "rule_id", "status", "evidence", "checked_at")
