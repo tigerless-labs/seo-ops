@@ -1300,7 +1300,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
             # characters, no corruption.
             summary = md_cell(flat, CFG.EVIDENCE_SUMMARY_WIDTH)
             if disp_width(md_cell(flat)) > CFG.EVIDENCE_SUMMARY_WIDTH:
-                summary += f" [more](#{cid.lower()})"
+                summary += f" [full](#{cid.lower()})"
                 details.append((cid, name, parts))
             # Docs column: points at the item's canonical write-up — verdict criteria,
             # common mistakes, authority sources, and how to fix all live there.
