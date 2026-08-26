@@ -3,7 +3,7 @@
 A checklist and checker for **SEO foundation engineering** — the machine-readable structure a site needs so search engines and AI retrieval can **fetch, read, index, and cite** it.
 Give it a URL: it fetches like a crawler and produces a pass/fail report with evidence.
 
-Three things:
+The whole repo is these three pieces:
 
 | | What it is |
 |---|---|
