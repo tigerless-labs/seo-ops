@@ -24,7 +24,6 @@ Usage details live in [SKILL.md](SKILL.md).
 
 ````
 Install https://github.com/tigerless-labs/seo-ops as a skill.
-
 ````
 
 **Or install by hand** — Claude Code (`~/.claude/skills/` for all projects, `<repo>/.claude/skills/` for one project):
