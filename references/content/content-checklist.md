@@ -1,7 +1,5 @@
 # content 供给清单(T 集 — content 团队的责任清单)
 
-Ryan · 2026-08-24 · `accepted`
-
 > 与 [checklist(C 集)](../checklist/checklist.md) 同构:**C 集查页面产出对不对,T 集定 content
 > 该供什么** —— 每条 T 标着它喂的下游 C 项,T 欠供 ⇒ 对应 C 红,责任可回溯。
 > **补集定位**:页面 doc 照旧交付,已经在交的不重复列;本表只列**它不覆盖的

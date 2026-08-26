@@ -1,8 +1,5 @@
 # 义务:红线与流程(SEO Conformance)
 
-**Metadata** — 决策:Ryan · 起草:Claude / 评审:Ryan / 日期:2026-08-18 / 状态:`accepted`
-(具体检查项(C 集)住 [checklist/checklist.md](checklist/checklist.md),本篇只留红线与权威依据。)
-
 > 分工:**checklist 管「查什么」**(C 集结构检查,机器执行);**本篇管「禁什么」**(红线,
 > 人闸把守);流程类判定(如新增 URL 走评审)由使用方自定,不在本包。编号共用一套,永不重排。
 
