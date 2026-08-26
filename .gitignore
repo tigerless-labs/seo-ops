@@ -1,4 +1,6 @@
 __pycache__/
+# LibreOffice 打开文件时的残留锁
+.~lock.*#
 *.pyc
 .env
 checker/.env
