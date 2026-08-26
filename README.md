@@ -1,12 +1,7 @@
 # seo-ops
 
-**SEO foundation engineering** = the machine-readable structure a site must have so that search engines and AI retrieval can **fetch, read, index, and cite** it:
-robots, sitemap, canonical and canonicalization, JSON-LD, OG, hreflang, Core Web Vitals, AI crawler access, rendering strategy.
-It's a **binary structural question** — is the required structure there and correct, not how high the ranking or how big the traffic.
-Getting it right doesn't guarantee ranking; getting it wrong makes everything on top useless: a page crawlers can't fetch doesn't exist, no matter how good the content.
-
-This repo turns that into an executable checklist and a script: **give it a URL, the script fetches like a crawler,
-judges each check pass / fail / not tested, and produces a report with evidence.**
+A checklist and checker for **SEO foundation engineering** — the machine-readable structure a site needs so search engines and AI retrieval can **fetch, read, index, and cite** it.
+Give it a URL: it fetches like a crawler and produces a pass/fail report with evidence.
 
 Three things:
 
