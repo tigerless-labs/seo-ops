@@ -6,9 +6,10 @@
 </p>
 
 **seo-ops checks a site's SEO foundation — the machine-readable structure search engines and AI
-retrieval need to fetch, read, index, and cite it.** The only required input is a URL: the checker
-fetches the site like a crawler — no code access, no framework integration — and produces a
-pass/fail report with evidence.
+retrieval need to fetch, read, index, and cite it.**
+
+The only required input is a URL: the checker fetches the site like a crawler — no code access,
+no framework integration — and produces a pass/fail report with evidence.
 
 The whole repo is these three pieces:
 
