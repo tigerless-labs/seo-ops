@@ -1,5 +1,5 @@
 __pycache__/
-# LibreOffice 打开文件时的残留锁
+# leftover lock files from LibreOffice opening a file
 .~lock.*#
 *.pyc
 .env
@@ -7,5 +7,5 @@ checker/.env
 checker/out/
 sites.yaml
 .seo-ops/
-# 本机 agent 状态(含 autoharness 自动生成的 skill),不进版本库
+# local agent state (including the autoharness auto-generated skill); not versioned
 .claude/

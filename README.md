@@ -1,67 +1,28 @@
 # seo-ops
 
-**SEO 基础工程** = 让搜索引擎和 AI 检索能**抓到、读懂、收录、引用**一个网站所必需的机器可读结构:
-robots、sitemap、canonical 与归一、JSON-LD、OG、hreflang、Core Web Vitals、AI 爬虫放行、渲染策略。
-它是**二元的结构问题** —— 该有的结构在不在、对不对,不是排名高不高、流量多不多。
-做好了不保证排名,做不好上面盖什么都没用:爬虫抓不到的页面,内容再好也不存在。
+**SEO foundation engineering** = the machine-readable structure a site must have so that search engines and AI retrieval can **fetch, read, index, and cite** it:
+robots, sitemap, canonical and canonicalization, JSON-LD, OG, hreflang, Core Web Vitals, AI crawler access, rendering strategy.
+It's a **binary structural question** — is the required structure there and correct, not how high the ranking or how big the traffic.
+Getting it right doesn't guarantee ranking; getting it wrong makes everything on top useless: a page crawlers can't fetch doesn't exist, no matter how good the content.
 
-这个仓库把它变成一份可执行的清单和一个脚本:**给个 URL,脚本模拟爬虫抓一遍,
-逐条判 pass / fail / 没测,出一份带证据的报告。**
+This repo turns that into an executable checklist and a script: **give it a URL, the script fetches like a crawler,
+judges each check pass / fail / not tested, and produces a report with evidence.**
 
-三样东西:
+Three things:
 
-| | 是什么 |
+| | What it is |
 |---|---|
-| [references/checklist/checklist.md](references/checklist/checklist.md) | **C 集** —— 26 条 SEO/GEO 结构检查,分站级 / 每收录页 / 条件项。每条另有一篇详细说明(判定标准、常见错法、权威依据),住 `references/checklist/references/C<N>.md` |
-| [scripts/run.py](scripts/run.py) | **checker 脚本** —— 输入一个 URL 就模拟爬虫去抓、按 C 集出报告。**零 LLM、不依赖任何前端架构**:只读线上 HTTP/HTML 产出,React / Vue / Next / WordPress / 纯静态都一样测 |
-| [references/content/content-checklist.md](references/content/content-checklist.md) | **T 集** —— 给网站内容设计团队的供给清单:SEO 需要哪些信息由 content 提供(title/desc、H2 大纲、图片 alt、ymyl 判定、OG 文案等),每条标注它喂的下游 C 项。每条详情住 `references/content/references/T<N>.md` |
+| [references/checklist/checklist.md](references/checklist/checklist.md) | The **C set** — 26 SEO/GEO structural checks, split into site-level / per indexed page / conditional. Each check has a detailed doc (criteria, common mistakes, authoritative references) at `references/checklist/references/C<N>.md` |
+| [scripts/run.py](scripts/run.py) | The **checker script** — give it a URL and it fetches like a crawler and reports against the C set. **Zero LLM, no frontend-framework dependency**: it only reads the live HTTP/HTML output, so React / Vue / Next / WordPress / plain static all test the same |
+| [references/content/content-checklist.md](references/content/content-checklist.md) | The **T set** — a supply checklist for the site's content design team: which inputs SEO needs content to provide (title/desc, H2 outline, image alt, ymyl judgment, OG copy, etc.), each annotated with the downstream C checks it feeds. Details at `references/content/references/T<N>.md` |
 
 ---
 
-## 单独跑脚本(不装 skill 也能用)
+## Quick start
 
-```bash
-git clone https://github.com/tigerless-labs/seo-ops.git
-cd seo-ops
-python3 -c "import requests, yaml" || pip install -r scripts/requirements.txt
-```
-
-只要 `requests` 和 `PyYAML`,Python ≥ 3.9。报 `externally-managed-environment`(PEP 668)时用
-`apt install python3-requests python3-yaml` 或建 venv。
-
-```bash
-python3 scripts/run.py --target https://example.com      # 线上站
-python3 scripts/run.py --target http://localhost:3000    # 本地部署
-python3 scripts/run.py                                   # 跑 sites.yaml 里全部站
-python3 scripts/run.py --site <id>                       # 只跑其中一个
-```
-
-`--target` 必须是 origin(`scheme + host[:port]`,不带 path/query)。
-常用参数:`--page-sample N`(抽样,默认全量)、`--sleep S` / `--workers N`(节流)、
-`--out <path>`(报告落哪)、`--verify-only`(只跑自检,不联网)。
-
-**产出**落 `~/Documents/seo-ops/out/`:`report-<site>-<date>.md`(人读)与
-`checks.db`(SQLite,跨次累积可 diff)。
-
-**配置**在 `~/.config/seo-ops/`,都不是必需的,照模板复制即可:
-
-```bash
-mkdir -p ~/.config/seo-ops
-cp references/sites.example.yaml  ~/.config/seo-ops/sites.yaml    # 多站花名册
-cp references/config.example.yaml ~/.config/seo-ops/config.yaml   # 改阈值
-cp references/.env.example        ~/.config/seo-ops/.env          # CrUX / IndexNow key
-```
-
-271 页的站全量约 7 分钟(默认单线程 1 秒间隔)。
-
----
-
-## 装成 skill(让 agent 全自动跑)
-
-整个仓库同时是一个 Agent Skill —— 装上之后直接说「检查一下 tigerless.com 的 SEO」,
-agent 会自己确认目标、跑脚本、读报告,并按 P0/P1/P2 讲清每条红项该怎么改。
-
-### 终端安装
+The whole repo is an Agent Skill — once installed, just say "check tigerless.com's SEO" and
+the agent confirms the target, runs the script, reads the report, and explains by P0/P1/P2 how to fix each red item.
+Usage details live in [SKILL.md](SKILL.md).
 
 **Claude Code**
 
@@ -75,19 +36,17 @@ git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
 git clone https://github.com/tigerless-labs/seo-ops.git ~/.codex/skills/seo-ops
 ```
 
-装项目级就把 `~/.claude` 换成 `<你的仓库>/.claude`(Codex 同理)。更新:`git pull`。
+For a project-level install, replace `~/.claude` with `<your repo>/.claude` (same for Codex). Update: `git pull`.
 
-### 让 agent 自己装
-
-把下面整段复制给 agent:
+**Or simply let your agent install it** — copy the whole block below to your agent:
 
 ````
-把 https://github.com/tigerless-labs/seo-ops 装成一个 skill:
+Install https://github.com/tigerless-labs/seo-ops as a skill:
 
-1. clone 到你加载 skill 的位置,目录名用 seo-ops
-   (Claude Code:~/.claude/skills/ 或 <repo>/.claude/skills/;Codex:~/.codex/skills/)
-2. 整个仓库一起装,不要只拷 SKILL.md —— scripts/ 与 references/ 都是运行期依赖
-3. 装依赖:python3 -c "import requests, yaml" || pip install -r <skill>/scripts/requirements.txt
-4. 冒烟:python3 <skill>/scripts/run.py --verify-only,应输出「✅ 清单与脚本对齐」
-5. 读一遍 SKILL.md,然后告诉我它能查什么、不查什么
+1. Clone it to wherever you load skills from, directory name seo-ops
+   (Claude Code: ~/.claude/skills/ or <repo>/.claude/skills/; Codex: ~/.codex/skills/)
+2. Install the whole repo, not just SKILL.md — scripts/ and references/ are runtime dependencies
+3. Install dependencies: python3 -c "import requests, yaml" || pip install -r <skill>/scripts/requirements.txt
+4. Smoke test: python3 <skill>/scripts/run.py --verify-only, it should print "✅ checklist and script in sync"
+5. Read SKILL.md, then tell me what it checks and what it doesn't
 ````

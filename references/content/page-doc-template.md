@@ -1,223 +1,235 @@
-# SEO 附录模板(附在页面 doc 末尾)
+# SEO appendix template (appended at the end of the page doc)
 
 Ryan · 2026-08-26 · `accepted`
 
-> 这份模板**只写我们要求 content 供的字段**([T 集](content-checklist.md))。
-> **交付形态:页面 doc 末尾加一节「附录 · SEO」**,把下面这份整段贴进去 ——
-> 前面的原文照旧,写法和顺序都不动,**头部不用为我们腾位置**。
-> 每条字段的详细说明(为什么要、怎么算合格、常见错误)各自一篇,住 [references/](references/)。
+> This template holds **only the fields we ask content to supply** ([the T set](content-checklist.md)).
+> **Delivery form: add an "Appendix · SEO" section at the end of the page doc** and paste the
+> block below in whole — the original text above stays as is, wording and order untouched, and
+> **the header gives up no room for us**.
+> Each field's detailed page (why it exists, what qualifies, common mistakes) lives under [references/](references/).
 
-## 怎么用
+## How to use
 
-### 放在哪
+### Where it goes
 
 ```
-页面 doc
-  ├─ 原文               ← 你们原有的写法,不动
-  └─ 附录 · SEO         ← 本模板整段贴在这里,一页一份
+page doc
+  ├─ original text        ← your existing writing, untouched
+  └─ Appendix · SEO       ← paste this template here in whole, one per page
 ```
 
-- **放文末,不放头部**:头部是给人看的入口,SEO 字段是给机器和验收用的输入,
-  两拨读者不一样,不该互相挡道。照常从第一行开始写原文,写完在末尾补这一节
-- **成段成节,不打散**:字段不要拆开塞进原文里 —— 逐条查的时候要能一次看全,
-  改原文时也不会顺手动到它们
-- 站级那两条**全站一份**,单独交一次,不进每页附录 —— 见「一、站级」
+- **At the end, not the top**: the top is the entry point for humans; SEO fields are input for
+  machines and acceptance — two different audiences that shouldn't block each other. Start the
+  original text on line one as always, and append this section when done
+- **One contiguous block, not scattered**: don't split the fields into the body — item-by-item
+  checks must see them all at once, and edits to the body must not brush against them
+- The two site-level items are **one copy for the whole site**, delivered once, not in each
+  page's appendix — see "1. Site-level"
 
-### 填写规矩
+### Filling rules
 
-1. **黑色的是要填的字段,灰色 `#` 开头的是备注** —— 备注是解释规则用的,
-   留着或删掉都不影响验收,但**别把备注当成字段填**。
-2. **`【】` 是占位符**,交付前应该一个都不剩 —— 搜一下 `【` 就知道漏没漏。
-3. **填不了的写「待定 · 原因」,不要留空,也不要删行。** 删了行,checker 判出红项时
-   反查不到是谁欠供;写「待定」至少知道在等谁。
-4. 不触发的条件项,**整段留着,值写 `N.A.`**,同理。
+1. **Black text is the fields to fill; gray lines starting with `#` are notes** — notes explain
+   the rules; keeping or deleting them doesn't affect acceptance, but **don't fill a note in as
+   a field**.
+2. **`{{ }}` marks a placeholder**; none should survive delivery — search for `{{` and you
+   know what's left.
+3. **What you can't fill, write "TBD · reason" — don't leave it blank, don't delete the line.**
+   Delete the line and when the checker flags a red item there is no trail to who under-supplied;
+   "TBD" at least says who is being waited on.
+4. Conditional items that don't trigger: **keep the whole block, write `N.A.` as the value** — same reason.
 
 ---
 
-## 一、站级(**全站一份,交一次**,不进每页附录)
+## 1. Site-level (**one copy site-wide, delivered once**, not in each page's appendix)
 
-T1 / T2 不是每页填的 —— 但**先有它们**:品牌名没定,每页的 title 和 JSON-LD 里的
-实体就各写各的。所以先交这一份,后面每页的附录只管自己那页。
+T1 / T2 are not filled per page — but **they come first**: with no brand name settled, every
+page's title and the entity in its JSON-LD go their own way. So deliver this copy first;
+afterwards each page's appendix minds only its own page.
 
 ```yaml
-# ---- T1 品牌名 + 官方账号(Organization 实体的数据源)------------------------
+# ---- T1 brand name + official accounts (data source for the Organization entity) ----
 brand:
-  legal_name: 【Tigerless Insurance Services, Inc.】   # 与营业执照 / 注册文件一致
-  display_name: 【Tigerless】                          # 页面上、title 里用的那个
-  name_zh: 【泰格勒思】                                 # 没有中文名就写「无」,别临时造一个
-  alias: 【TGL】                                        # 简称 / 别名,没有留空
-  logo: 【https://www.tigerless.com/logo.png】
-  # logo 硬要求:≥112×112 px、PNG/JPG(不能是 SVG)、正方或接近正方、背景不透明
+  legal_name: {{Tigerless Insurance Services, Inc.}}   # matches the business license / registration papers
+  display_name: {{Tigerless}}                          # the one used on pages and in titles
+  name_zh: {{Taigelesi}}                               # if there is no Chinese name write "none" — don't invent one on the spot
+  alias: {{TGL}}                                       # short name / alias; leave blank if none
+  logo: {{https://www.tigerless.com/logo.png}}
+  # logo hard requirements: >=112×112 px, PNG/JPG (not SVG), square or near-square, opaque background
 
-sameas:            # 官方账号逐条写完整 URL,不是 handle;三站与社媒互指同一实体
-  - 【https://www.linkedin.com/company/tigerless】
-  - 【https://x.com/tigerless】
-  - 【https://www.youtube.com/@tigerless】
-  - 【https://www.crunchbase.com/organization/tigerless】
-# 只列官方自有账号;别人写的介绍页、目录站收录页不算,填进去反而弱化实体指向
+sameas:            # official accounts as full URLs, one per line, not handles; the three sites and the socials point at one entity
+  - {{https://www.linkedin.com/company/tigerless}}
+  - {{https://x.com/tigerless}}
+  - {{https://www.youtube.com/@tigerless}}
+  - {{https://www.crunchbase.com/organization/tigerless}}
+# Only officially owned accounts; third-party write-ups and directory listings don't count — including them weakens the entity signal
 
-# ---- T2 重点页清单 + 一句话摘要(llms.txt 的取值来源)------------------------
+# ---- T2 key-page list + one-line summaries (the value source for llms.txt) ----
 key_pages:
-  - group: 【产品】
+  - group: {{Products}}
     pages:
-      - url: 【/sort/f1】
-        summary: 【F1 学生签证期间的医疗保险方案,含校方要求对照】
-      - url: 【/sort/h1b】
-        summary: 【H1B 工作签证保险,重点讲雇主计划之外的缺口】
-  - group: 【指南】
+      - url: {{/sort/f1}}
+        summary: {{Health insurance options during the F1 student visa, with a school-requirement comparison}}
+      - url: {{/sort/h1b}}
+        summary: {{H1B work-visa insurance, focused on the gaps outside the employer plan}}
+  - group: {{Guides}}
     pages:
-      - url: 【/guide/f1-to-h1b】
-        summary: 【身份转换期(gap)三种情形下保险怎么衔接】
-# summary ≤30 字,说这页能解决什么问题,不写营销语
-#   ✗「本页介绍我们优质的保险产品」—— AI 读了也不知道该不该点
-#   ✓「F1 学生签证期间的医疗保险方案,含校方要求对照」
-# pSEO 页集以 hub 页代表,不逐页罗列(几百条场景页塞进来,重点就没了)
-# 收谁由 content 判断(文件由 frontend 生成)
+      - url: {{/guide/f1-to-h1b}}
+        summary: {{How insurance bridges the three status-transition (gap) scenarios}}
+# summary <=30 chars: say what problem the page solves, no marketing copy
+#   ✗ "This page introduces our excellent insurance products" — an AI reading it still doesn't know whether to click
+#   ✓ "Health insurance options during the F1 student visa, with a school-requirement comparison"
+# pSEO page sets are represented by their hub page, not listed one by one (stuff hundreds of scenario pages in and the point drowns)
+# Which pages make the list is content's call (frontend generates the file)
 ```
 
-**维护节奏**:T1 变更时改(改名、换 logo、开新官方号);T2 新增重点页时补一行。
-两条都不用每页重复 —— 但**改了要说一声**,它们喂的是全站每一页的 JSON-LD。
+**Maintenance cadence**: change T1 when it changes (rename, new logo, new official account);
+add a line to T2 when a new key page ships. Neither repeats per page — but **say so when they
+change**: they feed the JSON-LD of every page site-wide.
 
 ---
 
-## 二、每页附录(**每页必交**)
+## 2. Per-page appendix (**required for every page**)
 
-下面整段就是「附录 · SEO」的全文,复制到页面 doc 末尾改值即可。
+The block below is the full text of "Appendix · SEO" — copy it to the end of the page doc and change the values.
 
 ```yaml
-# ============ 每页必交 =======================================================
+# ============ Required per page ==============================================
 
 # ---- T3 URL ----------------------------------------------------------------
-url: 【/guide/f1-to-h1b】
-# 全小写、连字符分词、层级反映品类、不带日期与后缀;新增 URL 要过评审(改的机会只有一次)
+url: {{/guide/f1-to-h1b}}
+# all lowercase, hyphen-separated words, hierarchy reflects category, no dates or extensions; new URLs go through review (the one chance to change)
 
-# ---- T4 YMYL 判定(条件项的总开关)-------------------------------------------
-ymyl: 【true / false】
-# 内容影响读者健康 / 财务 / 法律 / 人身安全 → true。拿不准标 true。
-# 漏标 = C21 整条静默失效,而不是报错
+# ---- T4 YMYL verdict (the master switch for the conditional items) ----------
+ymyl: {{true / false}}
+# Content affecting the reader's health / finances / legal standing / physical safety → true. When unsure, mark true.
+# A missed flag = all of C21 silently disabled, not an error
 
-# ---- T5 title / description(写成品文案,不是提纲)---------------------------
-title: 【F1 学生保险怎么选 | Tigerless】
-description: 【对照学校 waiver 要求逐条讲清 F1 期间该买什么保险,含常见拒赔情形与换保时机。】
-# 硬上限 title ≤60 / desc ≤150 字符;中文页按显示宽度实操收到 ≤30 / ≤75 字
-# 每页唯一,不复制粘贴改两个词
+# ---- T5 title / description (finished copy, not an outline) -----------------
+title: {{How to pick F1 student insurance | Tigerless}}
+description: {{Walks the school waiver requirements one by one — what insurance to buy during F1, common denial scenarios, and when to switch plans.}}
+# hard caps title <=60 / desc <=150 characters; Chinese pages in practice <=30 / <=75 chars by display width
+# unique per page — no copy-pasting with two words changed
 
 # ---- T6 H1 -----------------------------------------------------------------
-h1: 【F1 学生签证期间,医疗保险该怎么选】
-# 一页一个,与 title 同主题、文字可不同(h1 不用给品牌留位置,可以说得更完整)
+h1: {{How to choose health insurance during your F1 student visa}}
+# one per page, same topic as the title, wording may differ (the h1 reserves no room for the brand, so it can say more)
 
-# ---- T8 语言 ---------------------------------------------------------------
-locales: 【[en, zh]】
-default_locale: 【en】
-locale_note: 【单语页写 en only / zh only;双语页删掉这行】
-# 「只做英文」和「中文版还没交」在数据上长得一样,不写清楚没人知道该不该催
+# ---- T8 language ------------------------------------------------------------
+locales: {{[en, zh]}}
+default_locale: {{en}}
+locale_note: {{single-language pages write en only / zh only; bilingual pages delete this line}}
+# "English only" and "the Chinese version isn't delivered yet" look identical in the data; unless it's written down, nobody knows whether to chase
 
-# ---- T9 OG(缺省同 title/desc + 正文主图,只在需要差异化时才填)---------------
-og_title: 【留空 = 同 title】
-og_description: 【留空 = 同 description】
-og_image: 【留空 = 取正文主图;主图是图标/尺寸不对/太长时在这指定】
-# 指定时:1200×630 px、绝对 URL、不被 robots 拦
+# ---- T9 OG (defaults to title/desc + the body's lead image; fill only to differentiate) ----
+og_title: {{blank = same as title}}
+og_description: {{blank = same as description}}
+og_image: {{blank = the body's lead image; designate one here when that image is an icon / wrong size / too long}}
+# when designating: 1200×630 px, absolute URL, not blocked by robots
 
-# ---- T10 日期(为 GEO 保留:AI 引用明显偏好近期内容)-------------------------
-date_published: 【2026-03-12】
-date_modified: 【2026-08-26】
-# 只在内容实质更新时改(补内容/数字变/流程变算,改错别字、换配图、调排版不算)
-# 页面可见的「更新于…」与 JSON-LD 的 dateModified 同源同值,不一致是 C21 判红
+# ---- T10 dates (kept for GEO: AI citation clearly prefers recent content) ----
+date_published: {{2026-03-12}}
+date_modified: {{2026-08-26}}
+# change only on substantive content updates (new content / numbers changed / process changed count; typo fixes, image swaps, layout tweaks don't)
+# the visible "Updated ..." on the page and the JSON-LD dateModified share one source and one value; a mismatch is a C21 red
 
-# ---- T7 大纲(h2 / h3 的层级与每节结论)--------------------------------------
+# ---- T7 outline (the h2/h3 hierarchy plus each section's conclusion) --------
 outline:
-  - h2: 【F1 学生必须买医疗保险吗?】
-    lead: 【大多数学校强制要求,且必须满足 waiver 条款;不是联邦法律强制。】
-  - h2: 【学校的 waiver 要求一般看哪几项?】
-    lead: 【四项——年度上限、自付额、遣返条款、承保期覆盖整个学期。】
+  - h2: {{Do F1 students have to buy health insurance?}}
+    lead: {{Most schools require it and the plan must satisfy the waiver terms; not mandated by federal law.}}
+  - h2: {{What do school waiver requirements usually check?}}
+    lead: {{Four things — annual limit, deductible, repatriation clause, coverage across the whole term.}}
     h3:
-      - title: 【自付额(deductible)怎么算合格】
-        lead: 【多数学校要求 ≤$500……】
-      - title: 【年度上限看哪个数】
-        lead: 【……】
-  - h2: 【什么时候可以用校外保险替代校方计划?】
-    lead: 【满足全部 waiver 条款且在 waiver 截止日前提交证明。】
-# lead = 这一节第一段要说的结论(不是段落成品文案,是这节的结论一句话)
-# h3 必须挂在某个 h2 底下,不跳级(h1 → h3、h2 → h4 都不行)
-# 指南 / FAQ 类:h2 用用户的问法原句 —— 有人真会打进搜索框的那句话
-# FAQ 走独立问答块(供 FAQPage JSON-LD 取值),问与答成对写
+      - title: {{What deductible qualifies}}
+        lead: {{Most schools require ≤$500...}}
+      - title: {{Which number is the annual limit}}
+        lead: {{...}}
+  - h2: {{When can outside insurance replace the school plan?}}
+    lead: {{Every waiver term met and proof filed before the waiver deadline.}}
+# lead = the conclusion this section's first paragraph will state (one sentence of conclusion, not finished paragraph copy)
+# an h3 must hang under some h2; no skipping levels (no h1 → h3, no h2 → h4)
+# guide / FAQ content: h2 in the user's own words — the sentence someone would actually type into a search box
+# FAQs go in standalone Q&A blocks (feeding FAQPage JSON-LD), question and answer written as a pair
 
-# ---- T14 图片 alt(按图片文件名索引,不按「图 1 / 图 2」)--------------------
+# ---- T14 image alt (keyed by image filename, not "figure 1 / figure 2") -----
 images:
-  - file: 【gap-timeline.png】
-    alt: 【F1 到 H1B 身份转换期的三种情形与各自的保险衔接时间轴】
-  - file: 【claim-flow.png】
-    alt: 【理赔流程五步:提交材料、审核、补件、核定、打款】
-  - file: 【section-divider.svg】
-    alt: 装饰                    # 纯装饰图这样写,前端落成 alt=""
-# 用文件名当 key,不用序号 —— 原文里图片增删移动,序号会全部错位,文件名不会
-# 一句话说图里是什么,不说这图为什么在这;一般 10–25 字
-# 图里有关键数据 / 流程的,把关键信息写进 alt ——
-#   AI 读不到图,只能读到这句;这句写全了,图里的信息才算真的上了页
+  - file: {{gap-timeline.png}}
+    alt: {{Timeline of the three F1-to-H1B status-gap scenarios and how insurance bridges each}}
+  - file: {{claim-flow.png}}
+    alt: {{The five claim steps — file documents, review, supplement, adjudicate, pay out}}
+  - file: {{section-divider.svg}}
+    alt: decorative              # mark pure decoration like this; frontend renders it as alt=""
+# key by filename, not by number — images get added, removed, and moved in the body and every number shifts; filenames don't
+# one sentence on what's in the image, not why it's here; typically 10-25 chars
+# if the image carries key data / a process, write the key information into the alt —
+#   AI can't read the image, only this line; only when this line is complete has the image's information truly made it onto the page
 
-# ============ 条件项:触发才填,不触发整段留着写 N.A. ==========================
+# ============ Conditional: fill when triggered; otherwise keep the block and write N.A. ====
 
-# ---- T12 `ymyl: true` 时必填 ------------------------------------------------
+# ---- T12 required when `ymyl: true` -----------------------------------------
 author:
-  name: 【张明】
-  title: 【持牌保险顾问】
-  credential: 【California Insurance License #0M12345】
-  bio_url: 【/team/zhang-ming】        # 有独立作者页最好,没有写「无」
+  name: {{Zhang Ming}}
+  title: {{Licensed insurance advisor}}
+  credential: {{California Insurance License #0M12345}}
+  bio_url: {{/team/zhang-ming}}        # a dedicated author page is best; write "none" if there isn't one
 
-reviewer:                              # 没有真实审核就整段删掉,理由见下
-  name: 【Dr. Sarah Chen】
-  title: 【MD, 内科】
-  reviewed_on: 【2026-08-20】
+reviewer:                              # delete the whole block if no real review happened; reason below
+  name: {{Dr. Sarah Chen}}
+  title: {{MD, Internal Medicine}}
+  reviewed_on: {{2026-08-20}}
 
 citations:
-  - 【https://www.uscis.gov/…】
-  - 【https://www.healthcare.gov/…】
-# 作者要实名 + 头衔 + 可验证资质。「Tigerless 编辑团队」不算作者
-# 审核必须真实发生(R2 红线)。写了 Dr. X 而 Dr. X 没看过这篇,是伪造资质背书 ——
-#   宁可不写审核人,也不能写一个没审过的
-# citations 用官方来源:政府站、监管机构、学术机构、保险公司官方条款页
+  - {{https://www.uscis.gov/…}}
+  - {{https://www.healthcare.gov/…}}
+# Author: real name + title + verifiable credential. "The Tigerless editorial team" is not an author
+# The review must actually happen (R2 red line). Writing Dr. X when Dr. X never read the piece is fabricated credential endorsement —
+#   better no reviewer than one who never reviewed
+# citations use official sources: government sites, regulators, academic institutions, insurers' official policy pages
 
-# ---- T13 页面要展示产品与价格时必填 -----------------------------------------
+# ---- T13 required when the page shows a product with pricing ----------------
 product:
-  name: 【F1 学生医疗保险 · 标准计划】
-  description: 【覆盖门诊、住院、处方药与遣返条款,满足多数高校 waiver 要求。】
-  price: 【89】                        # 没有确定价格就删掉这两行,别填「面议」
-  price_currency: 【USD】
-  price_period: 【月】
-  coverage_limit: 【500000】           # 年度上限
-  deductible: 【250】
-  provider: 【Tigerless Insurance Services, Inc.】
-  valid_from: 【2026-01-01】
-  valid_through: 【2026-12-31】
-# 一个字段一格,不要写成一段话让工程师从里面抠数字;数字不带货币符号和单位
-# 每个值必须在页面上可见 —— JSON-LD 写 $89、页面写「低至 $79 起」是标记与可见不符
-# AggregateRating(用户评分)全站禁用,不要交。想展示口碑就展示,但不进结构化数据
+  name: {{F1 Student Health Insurance · Standard Plan}}
+  description: {{Covers outpatient, hospitalization, prescriptions, and repatriation; satisfies most university waiver requirements.}}
+  price: {{89}}                        # no settled price → delete these two lines; don't write "negotiable"
+  price_currency: {{USD}}
+  price_period: {{month}}
+  coverage_limit: {{500000}}           # annual limit
+  deductible: {{250}}
+  provider: {{Tigerless Insurance Services, Inc.}}
+  valid_from: {{2026-01-01}}
+  valid_through: {{2026-12-31}}
+# one field per slot — don't write a paragraph for engineers to dig numbers out of; numbers carry no currency symbols or units
+# every value must be visible on the page — $89 in the JSON-LD while the page says "from $79" is markup inconsistent with the visible page
+# AggregateRating (user ratings) is banned site-wide; don't deliver it. Show testimonials if you like, but not in structured data
 ```
 
-## 三、特殊页型的附加注意(**括号里是说明,不是要你填的字段**)
+## 3. Extra notes for special page types (**parentheses are explanation, not fields to fill**)
 
-> **(说明:页型不是供给字段。** 2026-08-25 起 content 不再逐页声明页型 —— Google 不消费
-> `WebPage` 子类型,而逐页维护漏标即静默失效。所以下面这张表**不是让你标「这是产品页」**,
-> 它是写作参照:这类页面容易漏什么,对着看一眼。真正的触发条件仍是
-> `ymyl` flag 与「页面上有没有那个东西」。**)**
+> **(Note: page type is not a supply field.** Since 2026-08-25 content no longer declares page
+> types per page — Google doesn't consume `WebPage` subtypes, and per-page upkeep fails silently
+> when missed. So the table below **is not asking you to mark "this is a product page"** — it's
+> a writing reference: what these pages tend to miss, glance at it. The real triggers remain the
+> `ymyl` flag and "is that thing on the page".**)**
 
-| 页型 | 这类页额外要注意 | 落到哪几条 |
+| Page type | Extra attention for this type | Which items |
 |---|---|---|
-| 指南 / 文章页 | 有正文、有作者 → 需要发布日与更新日**成对**;h2 用读者的问法 | T10 · T7(·T12 若 ymyl) |
-| FAQ 页 / 任何含 FAQ 块的页 | **问答原样成对写**,一问一答独立成块。(说明:答案会进 FAQPage JSON-LD,只喂机器不给人看是违规,所以页面上必须可见同样的问答) | T7 · C12 |
-| 产品 / 计划页 | 走 `product` 字段段,一个字段一格。(说明:价格、保障额度、自付额是读者最关心的对比项,埋在描述里就没法被引用) | T13 |
-| pSEO 批量场景页 | **与人写的页一视同仁** —— 同样一页一份附录、title/desc 唯一、alt 逐张写。(说明:进 llms.txt 时以 hub 页代表,几百条场景页不逐页罗列) | T5 · T14 · T2 |
-| 作者 / 团队页 | 每人实名 + 头衔 + 可验证资质,与文章页 byline 用**同一套写法** | T12 |
-| 分类 / 列表 / 对比页 | 清单项要在页面上可见、可点;别只给一张对比图。(说明:图里的内容 AI 读不到) | T14 · T7 |
-| 首页 | 品牌名写法以站级那份为准,不临时改口径 | T1 |
-| 关于 / 品牌故事页 | 一般 `ymyl: false`,但**公司资质、牌照号这类信息仍要能对得上证照** | T4 |
-| 中文页 / 双语页 | title ≤30 字、desc ≤75 字(显示宽度);en/zh 同交不留单边 | T5 · T8 |
+| guide / article page | has a body, has an author → publish and modified dates **as a pair**; h2 in the reader's own words | T10 · T7 (· T12 if ymyl) |
+| FAQ page / any page with an FAQ block | **Q&A written verbatim as pairs**, each pair its own block. (Note: answers go into FAQPage JSON-LD; feeding machines what humans can't see is a violation, so the same Q&A must be visible on the page) | T7 · C12 |
+| product / plan page | uses the `product` field block, one field per slot. (Note: price, coverage limit, and deductible are the comparisons readers care most about; buried in a description they can't be cited) | T13 |
+| pSEO bulk scenario pages | **treated exactly like human-written pages** — one appendix per page, unique title/desc, alt per image. (Note: represented in llms.txt by the hub page; hundreds of scenario pages are not listed one by one) | T5 · T14 · T2 |
+| author / team page | each person: real name + title + verifiable credential, in **the same style** as article-page bylines | T12 |
+| category / list / comparison page | list items must be visible and clickable on the page; don't ship just a comparison image. (Note: AI can't read what's in the image) | T14 · T7 |
+| home page | brand-name spelling follows the site-level copy; no ad-hoc variants | T1 |
+| about / brand-story page | usually `ymyl: false`, but **company credentials and license numbers must still match the certificates** | T4 |
+| Chinese / bilingual pages | title <=30 chars, desc <=75 chars (display width); en/zh delivered together, no one-sided delivery | T5 · T8 |
 
 ---
 
-> **交付前对着 [content-checklist.md](content-checklist.md) 逐条过一遍** —— 那份清单就是自查表,
-> 每条标着喂给下游哪个 C 项。本模板不再重复一份,**同一份要求写两处,迟早对不上**。
-> 唯一只在这里说的一条:交之前搜一下 `【`,应该一个都搜不到。
+> **Before delivering, walk through [content-checklist.md](content-checklist.md) item by item** —
+> that checklist is the self-check sheet; each entry is tagged with the downstream C check it
+> feeds. This template doesn't repeat it — **the same requirements written in two places will
+> drift apart sooner or later**. The one thing said only here: before delivering, search for
+> `{{` — you should find none.
 >
-> 验收路径:frontend 落地后 checker 跑 C 集,红项按 T 集的「下游」列反查回来,
-> 即知是 content 欠供还是 frontend 未落 —— 所以**留「待定」比留空好,留空比删行好**。
+> Acceptance path: after frontend lands the page, the checker runs the C set; red items trace
+> back through the T set's "Downstream" column — so you know whether content under-supplied or
+> frontend didn't land it. Hence **"TBD" beats blank, and blank beats a deleted line**.

@@ -1,68 +1,84 @@
-"""checker 参数配置 — 全部可调参数的唯一入口(默认值即阶段一基线)。
+"""checker parameter config — the single home of every tunable (defaults = the phase-one baseline).
 
-原则:判定逻辑住 run.py,判定参数住本文件;改阈值/清单只动这里,人审后合并。
-**机密不进本文件** — API key 一类住 `<config_dir>/.env`(默认 ~/.config/seo-ops/),模板见 `references/.env.example`。
-C4(CWV)无数据时 checker 输出 no-data(N.A.),不判红——阈值本身是 Google 官方常量。
-C 编号对应 references/checklist/checklist.md(2026-08-24 重排后)。
+Principle: verdict logic lives in run.py, verdict parameters live here; changing a
+threshold/list touches only this file, merged after human review.
+**No secrets in this file** — API keys and the like live in `<config_dir>/.env`
+(default ~/.config/seo-ops/), template in `references/.env.example`.
+C4 (CWV) with no data: the checker emits no-data (N.A.), never red — the thresholds
+themselves are official Google constants.
+C numbers map to references/checklist/checklist.md (after the 2026-08-24 reordering).
 """
 import json, os
 from pathlib import Path
 
 def _documents_dir():
-    """用户的「文档」目录。
+    """The user's Documents directory.
 
-    macOS 上若开了 iCloud 的「桌面与文稿」同步,~/Documents 会被重定向到
-    ~/Library/Mobile Documents/... —— `Path.home()/"Documents"` 跟着符号链接走,拿到的是对的。
-    报告因此可能被同步进 iCloud,这正是机密要单独放 config_dir 的原因。
+    On macOS with iCloud's "Desktop & Documents" sync on, ~/Documents is redirected to
+    ~/Library/Mobile Documents/... — `Path.home()/"Documents"` follows the symlink and
+    gets the right place. Reports may therefore get synced into iCloud, which is exactly
+    why secrets live separately in config_dir.
 
-    **Windows 未支持**:那边「文档」可能被 OneDrive 重定向,真值在注册表里,
-    而这里拼出来的路径可能是个空壳。没有 Windows 环境可验,就不写没测过的分支
-    —— 真要在 Windows 上跑,显式传 --state-dir 或设 $SEO_OPS_DIR。
+    **Windows unsupported**: there, Documents may be redirected by OneDrive with the
+    true value in the registry, and the path assembled here may be an empty husk. With
+    no Windows environment to verify on, we don't write an untested branch — to really
+    run on Windows, pass --state-dir explicitly or set $SEO_OPS_DIR.
     """
     return Path.home() / "Documents"
 
 
 def _config_base():
-    """机密目录的基座:$XDG_CONFIG_HOME 或 ~/.config(macOS / Linux 通用)。"""
+    """The base for the secrets directory: $XDG_CONFIG_HOME or ~/.config (macOS / Linux alike)."""
     return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 
 
 def state_dir(override=None):
-    """**产出**住哪(报告与 checks.db)。--state-dir > $SEO_OPS_DIR > <文档目录>/seo-ops
+    """Where **outputs** live (reports and checks.db). --state-dir > $SEO_OPS_DIR > <Documents>/seo-ops
 
-    **不住包内**:这份 checker 会被复制进 skill 目录,而 skill 更新 = 整包覆盖,
-    包内的可写状态必然随更新丢失(checks.db 尤其可惜,它设计成跨次累积好做 diff)。
+    **Not inside the package**: this checker gets copied into the skill directory, and a
+    skill update = whole-package overwrite, so writable state in the package is guaranteed
+    to be lost on update (checks.db especially — it is designed to accumulate across runs
+    for diffing).
 
-    **也不住 cwd 或某个项目里**:checks.db 是**站点**的历史,属于「你负责哪些站」,
-    不属于「你此刻在哪个代码仓库里」。同一批站从三个仓库验收,不该得到三份割裂的历史。
+    **Not in cwd or some project either**: checks.db is the history of **sites**; it
+    belongs to "which sites you are responsible for", not "which code repo you happen to
+    be in". Accepting the same sites from three repos should not yield three severed
+    histories.
 
-    落在 ~/Documents 是刻意的:报告是**给人读、要拿去跟施工方对账**的产出,
-    该待在用户找得到的地方,不是藏在 dotfile 里(同 last30days 的 MEMORY_DIR 约定)。
+    Landing in ~/Documents is deliberate: reports are outputs **for humans to read and to
+    settle accounts with contractors**; they belong where users can find them, not hidden
+    in a dotfile (same convention as last30days' MEMORY_DIR).
 
-    **配置不在这儿** —— `sites.yaml` 与 `.env` 都归 config_dir()。分界是
-    「配置 / 产出」,不是「敏感 / 不敏感」:花名册不是机密,但它是你**输入**给工具的
-    东西,跟工具**吐出来**的报告是两回事,混在一个目录里迟早分不清哪个能删。
+    **Config is not here** — `sites.yaml` and `.env` both belong to config_dir(). The
+    boundary is config vs output, not sensitive vs not: the roster is no secret, but it
+    is something you **feed** the tool, which is a different thing from what the tool
+    **emits**; mix them in one directory and sooner or later nobody knows what's safe to
+    delete.
 
-    附带好处:不依赖任何 agent 私有变量,所以 Claude Code / Codex / 裸命令行行为一致。
+    Side benefit: no dependency on any agent-private variable, so Claude Code / Codex /
+    a bare command line all behave the same.
     """
     if override:
-        # 未被替换的占位符守卫。默认值已不依赖任何 agent 私有变量,但旧版 SKILL.md 里
-        # 写过 `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops` —— 那是 Claude Code 的私有扩展,
-        # 不在 Agent Skills spec 里,别家 agent 照抄不会替换。两种烂法:
-        #   原样传进来  → override 里还带着 "${"
-        #   被 shell 吃掉 → 变成 "/.seo-ops",父目录是根
-        # 后者在容器里以 root 跑会**真的建在文件系统根目录**,静默落错地方。宁可停。
+        # Guard against unsubstituted placeholders. The default no longer depends on any
+        # agent-private variable, but an old SKILL.md carried
+        # `--state-dir ${CLAUDE_PROJECT_DIR}/.seo-ops` — a Claude Code private extension,
+        # not in the Agent Skills spec, so other agents copying it won't substitute.
+        # Two failure shapes:
+        #   passed through verbatim → override still contains "${"
+        #   eaten by the shell      → becomes "/.seo-ops", whose parent is the root
+        # The latter, running as root in a container, **really creates it at the
+        # filesystem root** — silently landing in the wrong place. Better to stop.
         if "${" in str(override) or "$(" in str(override):
             raise SystemExit(
-                f"--state-dir 里有没被替换的变量:{override}\n"
-                f"`${{CLAUDE_PROJECT_DIR}}` 只有 Claude Code 会替换。**直接省略 --state-dir**\n"
-                f"即可(默认 ~/Documents/seo-ops),或传一个真实路径 / 设 $SEO_OPS_DIR。")
+                f"--state-dir contains an unsubstituted variable: {override}\n"
+                f"Only Claude Code substitutes `${{CLAUDE_PROJECT_DIR}}`. **Just omit --state-dir**\n"
+                f"(default ~/Documents/seo-ops), or pass a real path / set $SEO_OPS_DIR.")
         p = Path(override).expanduser().resolve()
         if p.parent == Path(p.anchor):
             raise SystemExit(
-                f"--state-dir 指到了文件系统根下:{p}\n"
-                f"多半是某个变量展开成了空字符串。**直接省略 --state-dir** 即可\n"
-                f"(默认 ~/Documents/seo-ops),或传一个真实路径 / 设 $SEO_OPS_DIR。")
+                f"--state-dir points right under the filesystem root: {p}\n"
+                f"Most likely some variable expanded to an empty string. **Just omit --state-dir**\n"
+                f"(default ~/Documents/seo-ops), or pass a real path / set $SEO_OPS_DIR.")
         return p
     if os.environ.get("SEO_OPS_DIR"):
         return Path(os.environ["SEO_OPS_DIR"]).expanduser().resolve()
@@ -70,29 +86,31 @@ def state_dir(override=None):
 
 
 def config_dir():
-    """**配置**住哪(sites.yaml 与 .env)。$SEO_OPS_CONFIG_DIR > ${XDG_CONFIG_HOME:-~/.config}/seo-ops
+    """Where **config** lives (sites.yaml and .env). $SEO_OPS_CONFIG_DIR > ${XDG_CONFIG_HOME:-~/.config}/seo-ops
 
-    **与 state_dir 分开是有意的**,两条理由叠在一起:
+    **Separate from state_dir on purpose**, two reasons stacked:
 
-    1. 配置是**输入**,报告是**输出** —— 混一个目录里迟早分不清哪个能删。
-    2. 产出放 ~/Documents 是为了让人找得到,但 Documents 常被 iCloud / OneDrive /
-       Dropbox 同步、被备份、被整夹分享出去,API key 不能跟着走。~/.config 不进这些通道。
+    1. Config is **input**, reports are **output** — mix them in one directory and sooner
+       or later nobody knows what's safe to delete.
+    2. Outputs go to ~/Documents so people can find them, but Documents is routinely
+       synced by iCloud / OneDrive / Dropbox, backed up, and shared out folder-wide —
+       API keys must not ride along. ~/.config enters none of those channels.
 
-    (同 last30days:产出进 Documents,key 进 ~/.config/last30days/.env。)
+    (Same as last30days: outputs go to Documents, keys go to ~/.config/last30days/.env.)
     """
     if os.environ.get("SEO_OPS_CONFIG_DIR"):
         return Path(os.environ["SEO_OPS_CONFIG_DIR"]).expanduser().resolve()
     return _config_base().expanduser().resolve() / "seo-ops"
 
 def load_env(d=None):
-    """按顺序读 .env,先读到的先赢:
+    """Read .env files in order, first read wins:
 
-      1. <config_dir>/.env      —— 正位(默认 ~/.config/seo-ops/.env)
-      2. <state_dir>/.env       —— 旧布局,告警
-      3. 包内 scripts/.env      —— 更旧的布局,告警
+      1. <config_dir>/.env      — the canonical spot (default ~/.config/seo-ops/.env)
+      2. <state_dir>/.env       — legacy layout, warns
+      3. in-package scripts/.env — even older layout, warns
 
-    `setdefault` 而非赋值:**已 export 的环境变量永远赢过所有文件** —— CI 里注入 key
-    不该被谁的本地 .env 盖掉。
+    `setdefault`, not assignment: **already-exported environment variables always beat
+    every file** — a key injected in CI must not be overridden by somebody's local .env.
     """
     def parse(f):
         kv = {}
@@ -106,8 +124,8 @@ def load_env(d=None):
 
     canonical = config_dir() / ".env"
     sources = [(canonical, None),
-               ((d or state_dir()) / ".env", "旧布局(机密不该跟产出同住,Documents 常被云同步)"),
-               (Path(__file__).with_name(".env"), "包内旧布局(随 skill 更新会被覆盖)")]
+               ((d or state_dir()) / ".env", "legacy layout (secrets shouldn't live with outputs; Documents is often cloud-synced)"),
+               (Path(__file__).with_name(".env"), "legacy in-package layout (overwritten on every skill update)")]
     for f, why in sources:
         if not f.exists():
             continue
@@ -115,84 +133,102 @@ def load_env(d=None):
         fresh = [k for k in kv if k not in os.environ]
         for k, v in kv.items():
             os.environ.setdefault(k, v)
-        # 只在它**真的提供了值**时才喊 —— 被上一份盖掉时也喊,就成了每次都响的噪音。
-        # 但真提供了值就必须喊:静默的错位配置会让同一条命令在两台机器上给出不同结论
-        # (实测 C4 一处出实测值、一处记 need-crux-key)。
+        # Shout only when the file **actually supplied a value** — shouting when a prior
+        # file already won would be noise that fires every run.
+        # But when it did supply one, shouting is mandatory: silently misplaced config
+        # makes the same command give different conclusions on two machines
+        # (measured on C4: one gave real numbers, the other recorded need-crux-key).
         if why and fresh:
-            print(f"⚠️  {', '.join(fresh)} 来自 {f} —— {why}。请移到 {canonical}", flush=True)
+            print(f"⚠️  {', '.join(fresh)} came from {f} — {why}. Move it to {canonical}", flush=True)
 
 load_env()
 
-# ── 运行目标(单参数,模式自动判定)────────────────────
-# TARGET:站点**根 URL(origin)** = scheme + host[:port],不带 path/query/fragment
-#   (合法:"http://localhost:3000"、"https://www.tigerless.com";
-#    非法:"…/blog"、"…?x=1" — 脚本启动即校验报错,不猜)。
-#   一切入口从根派生:/robots.txt、sitemap、llms.txt、内链爬取起点。
-#   空 = 按 sites.yaml 全部站点跑(线上)。
-#   - host 为 localhost / 127.x / 裸 IP / *.local → **本地模式**:
-#     C3/C4 记 N.A.(reason=need-domain);C2/C6/C8 的绝对 URL 比对降级为
-#     自洽检查(声明 host 从产出内部推断多数值,替换为 TARGET host 后抓取验证)。
-#   - 否则 → **域名模式**:全量判定;C4 无 CrUX 数据时记 N.A.(reason=need-crux-data)。
-# 不支持公网 staging 域(会被当生产域测,C3 误红)——测试二选一:上线,或本地部署。
-TARGET = ""    # e.g. "http://localhost:3000" 或 "https://www.tigerless.com"
+# ── run target (one parameter, mode auto-detected) ────
+# TARGET: the site's **root URL (origin)** = scheme + host[:port], no path/query/fragment
+#   (valid: "http://localhost:3000", "https://www.tigerless.com";
+#    invalid: "…/blog", "…?x=1" — validated at startup, errors out, never guesses).
+#   Every entry point derives from the root: /robots.txt, sitemap, llms.txt, the crawl start.
+#   Empty = run every site in sites.yaml (live).
+#   - host is localhost / 127.x / bare IP / *.local → **local mode**:
+#     C3/C4 record N.A. (reason=need-domain); C2/C6/C8's absolute-URL comparisons degrade
+#     to self-consistency checks (the declared host is inferred as the majority value from
+#     the output, swapped for the TARGET host, then fetched and verified).
+#   - otherwise → **domain mode**: full verdicts; C4 with no CrUX data records N.A.
+#     (reason=need-crux-data).
+# Public staging domains are unsupported (they'd be judged as the production domain, C3
+# falsely red) — for testing, pick one: launch, or deploy locally.
+TARGET = ""    # e.g. "http://localhost:3000" or "https://www.tigerless.com"
 
-# ── 抓取 ──────────────────────────────────────────────
-# 真实浏览器 UA:Cloudflare 拦伪装爬虫 UA(2026-08-21 tigerless.com 实测 403)
+# ── fetching ──────────────────────────────────────────
+# Real browser UA: Cloudflare blocks fake crawler UAs (2026-08-21, measured 403 on tigerless.com)
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
-REQUEST_TIMEOUT = 20          # 秒
-FETCH_SLEEP = 1.0             # **单个 worker** 两次请求的间隔(秒);整体 QPS ≈ FETCH_CONCURRENCY / FETCH_SLEEP
-# 默认 1 = 顺序执行。271 页约 7 分钟 —— 对每日定时任务毫无痛感,
-# 却省掉一整类风险(线程安全、共享退避状态、限流误报、并发对拍的验证负担)。
-# 实测:顺序跑对 tigerless.com **零限流**;那些 429 全是并发打出来的。
-# `Fetcher.map()` 在 workers<=1 时走的就是普通列表推导,不建线程 —— 并发只是留了个接缝,不是默认路径。
-# 什么时候再打开:站点规模上千页、单轮超过 20 分钟时。届时**必须重做并发对拍**(见 README)。
+REQUEST_TIMEOUT = 20          # seconds
+FETCH_SLEEP = 1.0             # interval between two requests of **a single worker** (seconds); overall QPS ≈ FETCH_CONCURRENCY / FETCH_SLEEP
+# Default 1 = sequential. 271 pages take about 7 minutes — painless for a daily scheduled
+# run, and it removes a whole class of risk (thread safety, shared backoff state, throttle
+# false positives, the verification burden of a concurrency output-diff).
+# Measured: a sequential run against tigerless.com got **zero throttling**; every 429 came
+# from concurrency.
+# `Fetcher.map()` with workers<=1 is a plain list comprehension, no threads — concurrency
+# is a reserved seam, not the default path.
+# When to open it: sites in the thousands of pages, single runs past 20 minutes. At that
+# point **the concurrency output-diff must be redone** (see README).
 FETCH_CONCURRENCY = 1
-PAGE_SAMPLE_SIZE = 0          # 页级检查覆盖范围:0 = sitemap 登记的全部页(默认);>0 = 抽样上限(调试用)
+PAGE_SAMPLE_SIZE = 0          # page-level check coverage: 0 = every page the sitemap registers (default); >0 = sample cap (debugging)
 
-# ── 限流自适应(并发的安全带)──────────────────────────
-# 被限流的请求**不算检查不通过** —— 那是我们打太快,不是站点有问题。
-# 429/503 一律:退避重试 → 仍不行则记 N.A.(reason=throttled),并全局减速 + 报告顶部告警。
-# 教训(2026-08-25 实测):8 worker × 1s 对 tigerless.com = 271 页里 192 页吃 429,
-# 「站内死链」从 2 条虚报成 106 条 —— 假红比跑得慢危险得多。
+# ── throttle adaptation (concurrency's seat belt) ─────
+# A throttled request **never counts as a failed check** — it means we fetched too fast,
+# not that the site is broken.
+# 429/503 always: back off and retry → still failing, record N.A. (reason=throttled),
+# slow down globally + warn at the top of the report.
+# Lesson (measured 2026-08-25): 8 workers × 1s against tigerless.com = 192 of 271 pages
+# ate 429s, and "dead internal links" inflated from 2 to a false 106 — false reds are far
+# more dangerous than running slow.
 THROTTLE_STATUSES = (429, 503)
-THROTTLE_RETRIES = 3          # 单请求遇限流的重试次数(指数退避;有 Retry-After 头则听它的)
-THROTTLE_BACKOFF = 2.0        # 首次退避秒数,之后翻倍
-THROTTLE_MAX_SLEEP = 4.0      # 自适应叠加到每请求间隔上的上限(秒)
-THROTTLE_RECOVER_AFTER = 20   # 连续成功多少次回落一档(AIMD:撞墙乘性退避,顺畅了加性恢复)
-                              # 缺了这一半 = 退避只涨不降,早期一次 429 就把整轮永久拖慢 5 倍
+THROTTLE_RETRIES = 3          # retries per request on throttle (exponential backoff; obeys Retry-After when present)
+THROTTLE_BACKOFF = 2.0        # first backoff in seconds, doubles afterwards
+THROTTLE_MAX_SLEEP = 4.0      # cap on the adaptive extra added to each request interval (seconds)
+THROTTLE_RECOVER_AFTER = 20   # consecutive successes before stepping down a notch (AIMD: multiplicative backoff on impact, additive recovery when smooth)
+                              # without this half, backoff only ever grows — one early 429 permanently drags the whole run 5x slower
 
 # ── C2 sitemap ───────────────────────────────────────
-SITEMAP_NEWEST_LASTMOD_MAX_AGE_DAYS = 30   # 全站最新 lastmod 距今超此值 = sitemap 失养
-SITEMAP_URL_SAMPLE_SIZE = 20               # 条目可达性(无 4xx/5xx)抽查数
-SITEMAP_MAX_URLS_PER_FILE = 50000          # 协议硬上限(sitemaps.org):单份超限整份失效,须走 index 分片
-# lastmod 真实性:构建时间戳的定义 = 永远等于最近一次构建。checker 天天跑,所以只需判
-# 「最大单日簇占比 ≥ 阈值 且 该日 == 运行当天」—— 构建戳天天命中,真实批量编辑只在当天误报一次,
-# 次日日期退到过去自动转绿。误报有自愈期,漏报没有(见 references/C2.md)。
+SITEMAP_NEWEST_LASTMOD_MAX_AGE_DAYS = 30   # newest site-wide lastmod older than this = sitemap unmaintained
+SITEMAP_URL_SAMPLE_SIZE = 20               # entries sampled for reachability (no 4xx/5xx)
+SITEMAP_MAX_URLS_PER_FILE = 50000          # protocol hard cap (sitemaps.org): one shard over the cap invalidates the whole file, must move to index shards
+# lastmod truthfulness: a build timestamp is by definition always the latest build. The
+# checker runs daily, so it only needs "largest single-day cluster ratio >= threshold AND
+# that day == the run date" — a build stamp hits every day, a real bulk edit false-alarms
+# only on its own day and turns green tomorrow as the date recedes into the past.
+# False positives self-heal; false negatives never would (see references/C2.md).
 SITEMAP_LASTMOD_CLUSTER_RATIO = 0.20
 
-# ── C26 自动语言重定向(站级,抽样)────────────────────
-# 同一 URL 在不同 Accept-Language 下落点不同 = 按推测语言自动跳转。
-# Googlebot 不发 Accept-Language → 只能看到默认语言版,另一版对爬虫等于不存在。
+# ── C26 auto language redirects (site-level, sampled) ──
+# The same URL landing differently under different Accept-Language = auto-redirect by
+# guessed language.
+# Googlebot sends no Accept-Language → it only ever sees the default-language version;
+# the other version might as well not exist to crawlers.
 LANG_REDIRECT_SAMPLE_SIZE = 5
 LANG_REDIRECT_PROBES = ("en-US,en;q=0.9", "zh-CN,zh;q=0.9")
 
-# ── C4 CWV(Google 官方 good 阈值,常量)──────────────
+# ── C4 CWV (official Google "good" thresholds, constants) ──
 CWV_LCP_MS = 2500
 CWV_INP_MS = 200
 CWV_CLS = 0.1
-CRUX_API_KEY = os.environ.get("CRUX_API_KEY", "")   # 住 <config_dir>/.env;空 = C4 记 N.A.(need-crux-key)
+CRUX_API_KEY = os.environ.get("CRUX_API_KEY", "")   # lives in <config_dir>/.env; empty = C4 records N.A. (need-crux-key)
 
 # ── C5 IndexNow ──────────────────────────────────────
-# 住 <config_dir>/.env:INDEXNOW_KEYS=site_id:key,site_id:key(key 即站根 {key}.txt 的文件名与内容)
-INDEXNOW_KEYS = dict(                               # 未登记 = N.A.(need-key-declaration)
+# Lives in <config_dir>/.env: INDEXNOW_KEYS=site_id:key,site_id:key (the key is both the
+# filename and the content of {key}.txt at the site root)
+INDEXNOW_KEYS = dict(                               # unregistered = N.A. (need-key-declaration)
     pair.split(":", 1) for pair in
     (p.strip() for p in os.environ.get("INDEXNOW_KEYS", "").split(",")) if ":" in pair
 )
 
 def refresh_secrets():
-    """`--state-dir` 在 argparse 之后才知道(它影响 load_env 的第二个候选位置),
-    而上面两个常量在 import 时就定了。run.py 解析完参数后调一次,重读并刷新。"""
+    """`--state-dir` is only known after argparse (it affects load_env's second candidate
+    location), while the two constants above were fixed at import time. run.py calls this
+    once after parsing args to re-read and refresh."""
     global CRUX_API_KEY, INDEXNOW_KEYS
     CRUX_API_KEY = os.environ.get("CRUX_API_KEY", "")
     INDEXNOW_KEYS = dict(
@@ -200,48 +236,57 @@ def refresh_secrets():
         (p.strip() for p in os.environ.get("INDEXNOW_KEYS", "").split(",")) if ":" in pair
     )
 
-# ── C6 站内出链(内链图爬取)───────────────────────────
-CRAWL_MAX_PAGES = 5000        # 爬取上限(防失控);触顶则覆盖不完整,记 N.A.
+# ── C6 internal outlinks (link-graph crawl) ───────────
+CRAWL_MAX_PAGES = 5000        # crawl cap (a runaway guard); hitting it = incomplete coverage, recorded N.A.
 
-# ── C9 服务端直出(v1 启发式;比例判定待接 headless)────
-SSR_TEXT_RATIO = 0.90         # 目标判定:禁 JS 文本 / 渲染版文本 下限(headless 接入后启用)
-SSR_MIN_TEXT_CHARS = 500      # v1 启发式:禁 JS 抓取正文低于此值 = 疑似 CSR 空壳
+# ── C9 server-side rendering (v1 heuristic; ratio verdict awaits headless) ──
+SSR_TEXT_RATIO = 0.90         # target verdict: no-JS text / rendered text lower bound (enabled once headless lands)
+SSR_MIN_TEXT_CHARS = 500      # v1 heuristic: no-JS body text below this = likely CSR shell
 
-# ── C10 缓存公共版 ────────────────────────────────────
-CACHE_DIFF_SAMPLE_SIZE = 10   # 同 URL 双抓 diff 的抽查页数
+# ── C10 cached public version ─────────────────────────
+CACHE_DIFF_SAMPLE_SIZE = 10   # pages sampled for the same-URL double-fetch diff
 
-# ── 报告渲染 ─────────────────────────────────────────
-# 报告「说明」列的链接基址。给 GitHub URL 是为了报告发到哪都点得开(相对路径只有
-# 装了 skill 的人能用)。**仓库私有时对外人仍是 404** —— 要给施工方看就得改 public。
-# 想让验收文档引用「出报告那一刻」的说明,把 main 换成当次的 commit SHA。
+# ── report rendering ─────────────────────────────────
+# Base URL for the links in the report's Docs column. A GitHub URL so the report stays
+# clickable wherever it gets posted (relative paths only work for people with the skill
+# installed). **A private repo still means 404 for outsiders** — to show contractors,
+# the repo must go public.
+# To make an acceptance document cite the docs as of the moment the report was generated,
+# swap main for that run's commit SHA.
 DOC_BASE_URL = "https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references"
-# 表格里的证据只放摘要,完整证据在报告末尾的「证据」区(代码块,不受列宽约束、
-# 不参与表格解析)。摘要按**显示宽度**截断(中日韩字符算 2)——按字符数截没有用:
-# 300 个字符在窄列里是十几行,行高一撑就叠到下一行去,这正是旧版报告串行的成因。
-# 上限定在「一行装得下」:有的查看器行高只按别的列算,证据列一折行就叠进下一行、
-# 盖住行内链接。22 + 省略号 + 「 详见」链接约 28 宽,常见列宽(约 30)下留有余量。
-EVIDENCE_SUMMARY_WIDTH = 22   # 表格证据摘要的显示宽上限(目标:单行);完整证据不截断
+# The table carries only evidence summaries; full evidence lives in the report's closing
+# Evidence section (a code block, unconstrained by column width and outside table parsing).
+# Summaries truncate by **display width** (CJK characters count as 2) — truncating by
+# character count is useless: 300 characters in a narrow column is a dozen lines, and one
+# row-height stretch stacks it into the next row — exactly how old reports got garbled.
+# The cap targets "fits on one line": some viewers size row height off the other columns,
+# and a wrapped evidence cell stacks into the next row, covering inline links.
+# 22 + ellipsis + the " more" link is about 28 wide, leaving margin at common column
+# widths (about 30).
+EVIDENCE_SUMMARY_WIDTH = 22   # display-width cap for the table's evidence summary (target: one line); full evidence never truncated
 
 # ── C11 title / description ──────────────────────────
 TITLE_MAX_CHARS = 60
 DESC_MAX_CHARS = 150
 
-# ── C12 JSON-LD 基础项 ───────────────────────────────
+# ── C12 JSON-LD basics ───────────────────────────────
 ORG_TYPES = {"Organization", "InsuranceAgency", "LocalBusiness", "Corporation",
-             "OnlineBusiness", "MedicalOrganization"}   # 视同 Organization 的子类型
+             "OnlineBusiness", "MedicalOrganization"}   # subtypes treated as Organization
 
-# 出现即查的类型必填参数(**纯自证触发**:页面声明了该类型就查这一行,零外部输入)。
-# 清单来源 = references/C12.md 二节(本系统采纳线,权威依据 = Google 各 feature 文档),
-# 改那张表须同步改这里 —— 漂移守卫不覆盖这一对,靠人。
-# 2026-08-25:页型条件退役后,**「该有而没有」不再有任何一方判定**
-# (产品页整页没有 Product 标记这类缺失,checker 与人审都不覆盖)——
-# 取舍见 references/C12.md 开头说明。
+# Required fields per type, checked on sight (**purely self-evidencing**: the page
+# declaring the type triggers the row, zero external input).
+# The list mirrors references/C12.md section 2 (this system's adoption line, authority =
+# Google's per-feature docs); editing that table means editing this one — the drift guard
+# does not cover this pair, humans do.
+# 2026-08-25: with page-type conditions retired, **"should exist but doesn't" has no
+# judge on either side** (a product page with no Product markup at all is caught by
+# neither checker nor human review) — trade-off explained at the top of references/C12.md.
 TYPE_REQUIRED = {
     "Article":          ["headline", "image", "datePublished", "dateModified", "author"],
     "NewsArticle":      ["headline", "image", "datePublished", "dateModified", "author"],
     "BlogPosting":      ["headline", "image", "datePublished", "dateModified", "author"],
     "FAQPage":          ["mainEntity"],
-    "ProfilePage":      ["mainEntity"],   # Google 富媒体清单内(作者/员工档案页);2026-08-25 采纳
+    "ProfilePage":      ["mainEntity"],   # in Google's rich-results list (author/staff profile pages); adopted 2026-08-25
     "BreadcrumbList":   ["itemListElement"],
     "ItemList":         ["itemListElement"],
     "InsuranceProduct": ["name", "description"],
@@ -250,111 +295,118 @@ TYPE_REQUIRED = {
     "Person":           ["name"],
 }
 
-# 负向扫描:出现即红。清单来源 = references/C12.md 二节 4「负向约束」
-# 判据统一是「**谁消费它、给什么回报**」—— 答不出就不发出去,发了只有维护成本没有回报。
-# 2026-08-25:`AggregateRating` 移出本清单 —— 它的问题不是「没有消费方」(Google 真消费,
-# 出星级),而是「有没有真实评价数据」,那是内容真实性问题,归 R5 红线与人审,不是结构检查该判的。
-# 混在这里会让判据变成两套,清单也就说不清自己在拦什么。
+# Negative scan: red on sight. The list mirrors references/C12.md section 2.4
+# ("negative constraints"); the single criterion is "**who consumes it, and what's the
+# return**" — no answer means don't emit it: all maintenance cost, zero return.
+# 2026-08-25: `AggregateRating` moved out of this list — its problem is not "no consumer"
+# (Google does consume it, shows stars) but "is there real review data behind it", which
+# is a content-truthfulness question for the R5 red line and human review, not for a
+# structure check. Keeping it here would split the criterion in two, and the list could
+# no longer say what it is blocking.
 LD_REJECTED_TYPES = {
-    "SiteNavigationElement": "无消费方;导航信息 <nav> 已表达",
-    "SearchAction":       "Google 2024-10 下线 sitelinks searchbox,消费方已消失",
-    # WebPage 子类型整体不采纳:Google 无对应富媒体、无已知回报。
-    # 例外(不在此列,是真该声明的):FAQPage、ProfilePage
-    "ItemPage": "WebPage 子类型,无回报", "CollectionPage": "WebPage 子类型,无回报",
-    "AboutPage": "WebPage 子类型,无回报", "ContactPage": "WebPage 子类型,无回报",
-    "CheckoutPage": "WebPage 子类型,无回报", "SearchResultsPage": "WebPage 子类型,无回报",
+    "SiteNavigationElement": "no consumer; navigation is already expressed by <nav>",
+    "SearchAction":       "Google retired the sitelinks searchbox 2024-10, the consumer is gone",
+    # WebPage subtypes rejected wholesale: no matching Google rich result, no known return.
+    # Exceptions (not listed here, genuinely worth declaring): FAQPage, ProfilePage
+    "ItemPage": "WebPage subtype, no return", "CollectionPage": "WebPage subtype, no return",
+    "AboutPage": "WebPage subtype, no return", "ContactPage": "WebPage subtype, no return",
+    "CheckoutPage": "WebPage subtype, no return", "SearchResultsPage": "WebPage subtype, no return",
 }
 
-# ── C13 soft 404 / 空壳 200 ──────────────────────────
-MIN_CONTENT_CHARS = 400       # 去标签正文字符数低于此值 = 疑似空壳
-RETIRED_SAMPLE_SIZE = 10      # retired 条目状态码抽查数
+# ── C13 soft 404 / empty-shell 200 ───────────────────
+MIN_CONTENT_CHARS = 400       # tag-stripped body text below this = likely an empty shell
+RETIRED_SAMPLE_SIZE = 10      # retired entries sampled for status codes
 
-# ── C14 body-hide 第三方脚本(人维护清单,新工具在此追加)──
+# ── C14 body-hide third-party scripts (hand-maintained list, append new tools here) ──
 BODY_HIDE_PATTERNS = [
     r"hide_element\s*=\s*'body'",        # VWO
-    r"body\s*\{[^}]*opacity\s*:\s*0",    # 通用 anti-flicker
-    r"async-hide",                       # Google Optimize 系 anti-flicker
+    r"body\s*\{[^}]*opacity\s*:\s*0",    # generic anti-flicker
+    r"async-hide",                       # Google Optimize-family anti-flicker
 ]
 
 # ── C19 OG ───────────────────────────────────────────
 OG_IMAGE_WIDTH = 1200
 OG_IMAGE_HEIGHT = 630
 OG_VALID_TYPES = {"website", "article", "book", "profile", "product",
-                  "video.other", "video.movie", "music.song"}   # 合法 og:type(ogp.me 词表常用子集)
-# 自证触发:页面 JSON-LD 出现这些类型 = 自称文章 → og:type 必须是 article,不能是 website
+                  "video.other", "video.movie", "music.song"}   # valid og:type (common subset of the ogp.me vocabulary)
+# Self-evidencing trigger: these JSON-LD types on a page = it calls itself an article →
+# og:type must be article, not website
 ARTICLE_LD_TYPES = {"Article", "NewsArticle", "BlogPosting", "TechArticle", "ScholarlyArticle"}
 
-# ── C20 跳转链 ───────────────────────────────────────
-MAX_REDIRECT_HOPS = 1         # 任意入站 URL 允许的最大重定向次数
+# ── C20 redirect chains ──────────────────────────────
+MAX_REDIRECT_HOPS = 1         # max redirects allowed for any inbound URL
 
-# ── C23 noindex(收录页禁出现)────────────────────────
+# ── C23 noindex (forbidden on indexed pages) ─────────
 NOINDEX_TOKENS = ("noindex", "none")          # none ≡ noindex,nofollow
-NOINDEX_META_NAMES = ("robots", "googlebot")  # googlebot 是独立条目,不被 robots 覆盖
+NOINDEX_META_NAMES = ("robots", "googlebot")  # googlebot is a separate entry, not covered by robots
 
 # ── C24 viewport ─────────────────────────────────────
 VIEWPORT_REQUIRED_TOKEN = "width=device-width"
 
-# ── C25 mixed content(只判子资源,导航出链 <a> 不算)──
+# ── C25 mixed content (subresources only, navigation outlinks <a> don't count) ──
 SUBRESOURCE_TAGS = ("img", "script", "iframe", "video", "audio", "source", "embed", "object")
 
-# ── 用户可覆盖的参数 ──────────────────────────────────
-# 名字 → 一行说明。**只有这里登记的项**能被 <config_dir>/config.yaml 覆盖。
+# ── user-overridable parameters ───────────────────────
+# name → one-line description. **Only entries registered here** can be overridden by
+# <config_dir>/config.yaml.
 #
-# 不在这份白名单里的是有意排除的,分三类:
-#   机密    CRUX_API_KEY / INDEXNOW_KEYS —— 住 .env,不进明文配置
-#   常量    CWV_LCP_MS / CWV_INP_MS / CWV_CLS(Google 官方 good 阈值)、
-#           SITEMAP_MAX_URLS_PER_FILE(sitemaps.org 协议硬上限)、
-#           VIEWPORT_REQUIRED_TOKEN —— 调了就不是这条检查了
-#   结构化  TYPE_REQUIRED / LD_REJECTED_TYPES / BODY_HIDE_PATTERNS 等 ——
-#           改它们等于改判定逻辑,该走 PR 人审,不该藏在某人本地的 yaml 里
+# What's not on this whitelist is excluded on purpose, in three classes:
+#   secrets     CRUX_API_KEY / INDEXNOW_KEYS — live in .env, never in plaintext config
+#   constants   CWV_LCP_MS / CWV_INP_MS / CWV_CLS (official Google "good" thresholds),
+#               SITEMAP_MAX_URLS_PER_FILE (the sitemaps.org protocol hard cap),
+#               VIEWPORT_REQUIRED_TOKEN — tune them and it's no longer the same check
+#   structured  TYPE_REQUIRED / LD_REJECTED_TYPES / BODY_HIDE_PATTERNS etc. —
+#               changing them changes verdict logic, which belongs in a human-reviewed PR,
+#               not hidden in somebody's local yaml
 TUNABLE = {
-    "UA":                                  "抓取用的 User-Agent(真实浏览器 UA;Cloudflare 拦伪装爬虫 UA)",
-    "REQUEST_TIMEOUT":                     "单请求超时(秒)",
-    "FETCH_SLEEP":                         "单个 worker 两次请求的间隔(秒);整体 QPS ≈ 并发 / 间隔",
-    "FETCH_CONCURRENCY":                   "并发抓取线程数;1 = 顺序执行。打开前须重做并发对拍",
-    "PAGE_SAMPLE_SIZE":                    "页级检查覆盖:0 = sitemap 全量,>0 = 抽样上限",
-    "THROTTLE_RETRIES":                    "单请求遇 429/503 的重试次数(指数退避)",
-    "THROTTLE_BACKOFF":                    "首次退避秒数,之后翻倍",
-    "THROTTLE_MAX_SLEEP":                  "自适应叠加到每请求间隔上的上限(秒)",
-    "THROTTLE_RECOVER_AFTER":              "连续成功多少次回落一档(AIMD 的加性恢复)",
-    "SITEMAP_NEWEST_LASTMOD_MAX_AGE_DAYS": "C2:全站最新 lastmod 距今超此值 = sitemap 失养",
-    "SITEMAP_URL_SAMPLE_SIZE":             "C2:条目可达性抽查数",
-    "SITEMAP_LASTMOD_CLUSTER_RATIO":       "C2:单日 lastmod 簇占比超此值且为当天 = 疑似构建戳",
-    "LANG_REDIRECT_SAMPLE_SIZE":           "C26:自动语言重定向的抽样页数",
-    "CRAWL_MAX_PAGES":                     "C6:站内爬取上限(防失控);触顶则覆盖不完整,记 N.A.",
-    "SSR_TEXT_RATIO":                      "C9:禁 JS 文本 / 渲染版文本 下限(接 headless 后启用)",
-    "SSR_MIN_TEXT_CHARS":                  "C9:禁 JS 抓取正文低于此值 = 疑似 CSR 空壳",
-    "CACHE_DIFF_SAMPLE_SIZE":              "C10:同 URL 双抓 diff 的抽查页数",
-    "TITLE_MAX_CHARS":                     "C11:title 长度上限",
-    "DESC_MAX_CHARS":                      "C11:description 长度上限",
-    "MIN_CONTENT_CHARS":                   "C13:正文字数下限(thin content)",
-    "RETIRED_SAMPLE_SIZE":                 "C20:退役 URL 抽查数",
-    "OG_IMAGE_WIDTH":                      "C19:og:image 建议宽",
-    "OG_IMAGE_HEIGHT":                     "C19:og:image 建议高",
-    "MAX_REDIRECT_HOPS":                   "C3:归一跳数上限(一跳到位才不掉权重)",
-    "DOC_BASE_URL":                        "报告「说明」列的链接基址;换 main 为 commit SHA 可钉住版本",
-    "EVIDENCE_SUMMARY_WIDTH":              "报告表格里证据摘要的显示宽上限;完整证据在报告末尾证据区,不截断",
+    "UA":                                  "User-Agent for fetching (a real browser UA; Cloudflare blocks fake crawler UAs)",
+    "REQUEST_TIMEOUT":                     "per-request timeout (seconds)",
+    "FETCH_SLEEP":                         "interval between two requests of a single worker (seconds); overall QPS ≈ workers / interval",
+    "FETCH_CONCURRENCY":                   "concurrent fetch threads; 1 = sequential. Redo the concurrency output-diff before enabling",
+    "PAGE_SAMPLE_SIZE":                    "page-level check coverage: 0 = the full sitemap, >0 = sample cap",
+    "THROTTLE_RETRIES":                    "retries per request on 429/503 (exponential backoff)",
+    "THROTTLE_BACKOFF":                    "first backoff in seconds, doubles afterwards",
+    "THROTTLE_MAX_SLEEP":                  "cap on the adaptive extra added to each request interval (seconds)",
+    "THROTTLE_RECOVER_AFTER":              "consecutive successes before stepping down a notch (AIMD's additive recovery)",
+    "SITEMAP_NEWEST_LASTMOD_MAX_AGE_DAYS": "C2: newest site-wide lastmod older than this = sitemap unmaintained",
+    "SITEMAP_URL_SAMPLE_SIZE":             "C2: entries sampled for reachability",
+    "SITEMAP_LASTMOD_CLUSTER_RATIO":       "C2: single-day lastmod cluster over this ratio on the run date = suspected build timestamp",
+    "LANG_REDIRECT_SAMPLE_SIZE":           "C26: pages sampled for auto language redirects",
+    "CRAWL_MAX_PAGES":                     "C6: crawl cap (a runaway guard); hitting it = incomplete coverage, recorded N.A.",
+    "SSR_TEXT_RATIO":                      "C9: no-JS text / rendered text lower bound (enabled once headless lands)",
+    "SSR_MIN_TEXT_CHARS":                  "C9: no-JS body text below this = likely CSR shell",
+    "CACHE_DIFF_SAMPLE_SIZE":              "C10: pages sampled for the same-URL double-fetch diff",
+    "TITLE_MAX_CHARS":                     "C11: title length cap",
+    "DESC_MAX_CHARS":                      "C11: description length cap",
+    "MIN_CONTENT_CHARS":                   "C13: body text lower bound (thin content)",
+    "RETIRED_SAMPLE_SIZE":                 "C20: retired URLs sampled",
+    "OG_IMAGE_WIDTH":                      "C19: recommended og:image width",
+    "OG_IMAGE_HEIGHT":                     "C19: recommended og:image height",
+    "MAX_REDIRECT_HOPS":                   "C3: canonicalization hop cap (only a single hop preserves the weight)",
+    "DOC_BASE_URL":                        "base URL for the report's Docs column; swap main for a commit SHA to pin a version",
+    "EVIDENCE_SUMMARY_WIDTH":              "display-width cap for the table's evidence summary; full evidence in the report's closing evidence section, untruncated",
 }
 
 
 def render_example():
-    """按 TUNABLE 与**当前默认值**渲染 config.example.yaml 的内容。
+    """Render config.example.yaml's content from TUNABLE and the **current defaults**.
 
-    示例文件是生成物,不是手写的 —— 手写的示例迟早跟代码对不上,而一份说着
-    旧默认值的模板比没有模板更坏。`run.py --verify-only` 会拿它跟这里比对,
-    对不上就以 1 退出(CI 会跑)。改了默认值就重新生成:
+    The example file is generated, not hand-written — a hand-written example eventually
+    disagrees with the code, and a template stating stale defaults is worse than no
+    template. `run.py --verify-only` compares it against this output and exits 1 on
+    mismatch (CI runs it). After changing a default, regenerate:
         python3 scripts/config.py --write-example
     """
     lines = [
-        "# seo-ops 可调参数 —— 复制到 <config_dir>/config.yaml 后按需改。",
-        "#   默认位置:${XDG_CONFIG_HOME:-~/.config}/seo-ops/config.yaml",
+        "# seo-ops tunables — copy to <config_dir>/config.yaml, then change what you need.",
+        "#   default location: ${XDG_CONFIG_HOME:-~/.config}/seo-ops/config.yaml",
         "#   mkdir -p ~/.config/seo-ops && cp references/config.example.yaml ~/.config/seo-ops/config.yaml",
         "#",
-        "# 下面每一行都是**当前默认值**,原样保留即等同不配置。只改你要改的那几行,",
-        "# 其余留着或删掉都行 —— 没写的项走默认。",
+        "# Every line below is the **current default**; left as-is it equals no config at all.",
+        "# Change only the lines you need — keep or delete the rest, unset keys use the defaults.",
         "#",
-        "# 机密不进本文件:CRUX_API_KEY / INDEXNOW_KEYS 住同目录的 .env。",
-        "# 未登记的键会被拒绝(拼错的键名不会被静默忽略)。",
+        "# No secrets in this file: CRUX_API_KEY / INDEXNOW_KEYS live in .env in the same directory.",
+        "# Unregistered keys are rejected (a typoed key name won't be silently ignored).",
         "",
     ]
     for name, why in TUNABLE.items():
@@ -366,10 +418,11 @@ def render_example():
 
 
 def load_overrides(path=None):
-    """读 <config_dir>/config.yaml 覆盖默认值。
+    """Read <config_dir>/config.yaml to override defaults.
 
-    **未知键与类型不符一律报错退出**,不静默忽略 —— 这是个验收工具,
-    「我明明调了阈值」却因为拼错键名而按默认值出报告,比直接报错危险得多。
+    **Unknown keys and type mismatches error out, never silently ignored** — this is an
+    acceptance tool; "I definitely tuned that threshold" while the report used the default
+    because of a typoed key name is far more dangerous than a plain error.
     """
     f = path or (config_dir() / "config.yaml")
     if not f.exists():
@@ -377,16 +430,16 @@ def load_overrides(path=None):
     import yaml
     data = yaml.safe_load(f.read_text()) or {}
     if not isinstance(data, dict):
-        raise SystemExit(f"{f}:顶层应是 key: value 映射,读到 {type(data).__name__}")
+        raise SystemExit(f"{f}: top level should be a key: value mapping, got {type(data).__name__}")
     for k, v in data.items():
         if k not in TUNABLE:
             raise SystemExit(
-                f"{f}:不认识的配置项 {k!r}。可用项见 references/config.example.yaml;"
-                f"机密请放同目录的 .env。")
+                f"{f}: unknown config key {k!r}. Valid keys are in references/config.example.yaml; "
+                f"secrets go in .env in the same directory.")
         want = type(globals()[k])
-        # bool 是 int 的子类,别让 true 悄悄变成 1
+        # bool is a subclass of int; don't let true quietly become 1
         if isinstance(v, bool) != (want is bool) or not isinstance(v, (want, int) if want is float else want):
-            raise SystemExit(f"{f}:{k} 应为 {want.__name__},读到 {type(v).__name__}({v!r})")
+            raise SystemExit(f"{f}: {k} should be {want.__name__}, got {type(v).__name__} ({v!r})")
         globals()[k] = want(v) if want is float else v
 
 
@@ -398,6 +451,6 @@ if __name__ == "__main__":
     if "--write-example" in sys.argv:
         out = Path(__file__).resolve().parents[1] / "references" / "config.example.yaml"
         out.write_text(render_example())
-        print(f"✅ 已重新生成 {out}")
+        print(f"✅ regenerated {out}")
     else:
-        sys.exit("用法:python3 scripts/config.py --write-example")
+        sys.exit("usage: python3 scripts/config.py --write-example")

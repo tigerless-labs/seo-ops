@@ -1,82 +1,82 @@
-# 检查清单(C 集,静态结构检查)
+# Checklist (C set, static structure checks)
 
-> **定义:全部代码的「机器足迹」检查清单**——检查对象是最终 HTTP/HTML 产出的**机器可读面**,
-> 谁产出的不管(后端模板、前端代码、第三方脚本的产出,只要爬虫看得见就被覆盖);
-> 分界线是「机器可读面 / 人可感面」,不是前端/后端——样式、交互、体验与代码内部质量不在此列。
-> **用途单一:静态结构检查**——只判「该有的结构在不在、对不对」,不判内容质量、不判效果、不含流程。
-> checker(手动运行的检查脚本)按一、二节实现(`checks` 表逐项落库);三节为人审项。
-> 边界:本清单全绿 ≠ 全部合规——内容真伪/质量类审核归 content 管理团队(YMYL 走专业部门,R2),
-> 红线见 conformance,流程判定见 methods;本系统只提供结构位与结构校验。
-> 适用范围:**站级**(每站一次)/ **每收录页** / **条件项**(由 flag 或站点配置触发,不由页型触发)。
-> 每条目的详细说明各自一篇,住 [references/](references/)(介绍 + 实现指导两段);本表是索引与判定一览。
+> **Definition: the machine-footprint checklist for all code** — the object of inspection is the **machine-readable surface** of the final HTTP/HTML output;
+> who produced it doesn't matter (backend templates, frontend code, a third-party script's output — if a crawler can see it, it's covered);
+> the dividing line is "machine-readable surface / human-perceivable surface", not frontend/backend — styling, interaction, experience, and internal code quality are out of scope.
+> **Single purpose: static structure checks** — only "is the required structure present and correct"; no content quality, no effect, no process.
+> The checker (a manually run check script) implements sections 1 and 2 (each item lands in the `checks` table); section 3 is human review.
+> Boundary: all green ≠ fully compliant — content truth/quality review belongs to the content management team (YMYL goes to the professional department, R2),
+> red lines live in conformance, process verdicts in methods; this system provides only structural slots and structural validation.
+> Scope: **site-level** (once per site) / **per indexed page** / **conditional** (triggered by a flag or site config, never by page type).
+> Each item has its own full write-up under [references/](references/) (an intro plus an implementation-guidance section); this table is the index and verdict overview.
 
-## 一、站级(每站一次)
+## 1. Site-level (once per site)
 
-| ID | 优先级 | 检查 | 判定 | 执行层 |
+| ID | Priority | Check | Verdict method | Layer |
 |---|---|---|---|---|
-| C1 | P0 | robots.txt 放行全部 AI 爬虫 UA | fetch + 逐 UA 比对 | checker |
-| C2 | P0 | sitemap 可达、条目无 4xx/5xx、lastmod 真实、单份 ≤5 万条 | fetch + **禁重定向**抽查 + lastmod 覆盖率/离散度/单日簇 + 逐份条目计数 | checker |
-| C3 | P0 | 网址归一:www/裸域、http/https、尾斜杠 301 到同一个 canonical host | 四变体 curl(**需真实域名;预发/无域名时记 N.A.**) | checker |
-| C26 | P0 | 不按 Accept-Language 分流:语言版本各有固定 URL,不自动跳 | 抽样页各发一次 en-US / zh-CN,比对 final_url;不一致 = 存在按推测语言的自动跳转 | checker |
-| C4 | P1 | Core Web Vitals 达标:LCP<2.5s / INP<200ms / CLS<0.1 | CrUX API(**需域名且上线后有真实流量(约 28 天);此前记 N.A.**) | checker |
-| C5 | P1 | IndexNow key 文件在站根可达 | fetch key 文件,200 且内容 == key(**需站点方报 key 登记进 config.INDEXNOW_KEYS;未登记记 N.A.**) | checker |
-| C6 | P1 | 站内出链无 4xx/5xx:页面上的链接不指向坏页 | 爬内链图,目标不在 sitemap 里的站内链接状态码 <400;未爬全则记 N.A. | checker |
-| C7 | P2 | llms.txt 存在:站根给 AI 引擎的站点目录 | fetch + 格式检查 | checker + 人审 |
+| C1 | P0 | robots.txt allows all AI crawler UAs | fetch + per-UA comparison | checker |
+| C2 | P0 | sitemap reachable, no 4xx/5xx entries, truthful lastmod, <=50k URLs per file | fetch + **no-redirect** sampling + lastmod coverage/dispersion/single-day cluster + per-shard entry count | checker |
+| C3 | P0 | URL canonicalization: www/apex, http/https, trailing slash all 301 to one canonical host | four-variant curl (**needs a real domain; staging/no-domain runs record N.A.**) | checker |
+| C26 | P0 | no Accept-Language redirects: every language version has its own fixed URL, no auto-jump | fetch sampled pages once each with en-US / zh-CN, compare final_url; divergence = auto-redirect by guessed language | checker |
+| C4 | P1 | Core Web Vitals pass: LCP<2.5s / INP<200ms / CLS<0.1 | CrUX API (**needs a domain plus real post-launch traffic (about 28 days); N.A. before that**) | checker |
+| C5 | P1 | IndexNow key file reachable at the site root | fetch the key file, 200 and content == key (**the site must register its key in config.INDEXNOW_KEYS; unregistered records N.A.**) | checker |
+| C6 | P1 | internal outlinks free of 4xx/5xx: links on pages don't point at broken pages | crawl the internal link graph; in-site links whose targets are outside the sitemap must return <400; incomplete crawl records N.A. | checker |
+| C7 | P2 | llms.txt exists: a site directory for AI engines at the root | fetch + format check | checker + human review |
 
-## 二、每收录页
+## 2. Per indexed page
 
-| ID | 优先级 | 检查 | 判定 | 执行层 |
+| ID | Priority | Check | Verdict method | Layer |
 |---|---|---|---|---|
-| C8 | P0 | 自引用 canonical:每页指向自己的规范 URL,HTML 与 header 不冲突 | 抓页比对 `<link rel=canonical>` × `Link: rel="canonical"` 响应头 | checker |
-| C9 | P0 | 服务端直出完整正文:不执行 JS 也拿得到(禁 CSR 空壳) | 禁 JS 抓取 ≥ 渲染版 90% | checker |
-| C10 | P0 | 缓存 HTML 为无个性化公共版:不含因人而异的内容 | 同一 URL 两次匿名抓取 diff 为空(抽查) | checker |
-| C23 | P0 | 收录页无 noindex:meta robots 与 X-Robots-Tag 都没挡 | 抓页查 robots/googlebot meta + `X-Robots-Tag` 响应头 | checker |
-| C11 | P1 | title / description 每页唯一且不超长(≤60 / ≤150) | 样本集合比对 | checker |
-| C12 | P1 | JSON-LD:块可解析、必填字段齐、无已失效类型 | 解析 ld+json(存在 / 语法 / 基础组与类型参数 / 负向扫描) | checker + 人审 |
-| C13 | P1 | 无 soft 404:不返回 200 却给空页或错误页(下架走 301/410) | 内容长度阈值 + retired 抽查 | checker |
-| C14 | P1 | 无 anti-flicker 脚本把整页藏起来(爬虫可能只拿到空白) | grep 已知 pattern + 渲染首屏非空白 | checker |
-| C16 | P1 | snippet 控制:max-snippet:-1 + max-image-preview:large | 抓页查 robots meta | checker |
-| C24 | P1 | viewport meta 含 width=device-width | 抓页查 meta | checker |
-| C17 | P2 | 标题层级:恰好一个 h1,h2→h3 逐级不跳级 | DOM 解析 heading 序列 | checker |
-| C18 | P2 | 每张 img 有显式 width/height + alt 属性 | DOM/模板 grep | 站点 CI + checker |
-| C19 | P2 | Open Graph 全套 + twitter:card:社交预览卡完整且取值正确 | 抓页查 meta;image 声明 1200×630;og:type × JSON-LD 文章类型交叉验 | checker |
-| C20 | P2 | 重定向 hop ≤1:不叠跳转链 | 抓取时统计 redirect 链长 | checker |
-| C15 | P2 | 渲染成本不按请求计:SSR 需 CDN 缓存(s-maxage + SWR),SSG 免 | curl 响应头 × 渲染策略声明 | checker |
-| C25 | P2 | 无 mixed content:HTTPS 页的子资源不走 http:// | 扫 img/script/iframe/link 等子资源 URL 协议 | checker |
+| C8 | P0 | self-referencing canonical: every page names its own canonical URL, HTML and header agree | fetch the page, compare `<link rel=canonical>` × the `Link: rel="canonical"` response header | checker |
+| C9 | P0 | full body served server-side: readable without executing JS (no CSR shell) | no-JS fetch >= 90% of the rendered version | checker |
+| C10 | P0 | cached HTML is a public non-personalized version: nothing user-specific in it | two anonymous fetches of the same URL diff empty (sampled) | checker |
+| C23 | P0 | indexed pages carry no noindex: neither meta robots nor X-Robots-Tag blocks | fetch the page, check robots/googlebot meta + the `X-Robots-Tag` response header | checker |
+| C11 | P1 | title / description unique per page and within limits (<=60 / <=150) | sample-set comparison | checker |
+| C12 | P1 | JSON-LD: blocks parse, required fields present, no rejected types | parse ld+json (presence / syntax / base group and per-type fields / negative scan) | checker + human review |
+| C13 | P1 | no soft 404s: never a 200 serving an empty or error page (retire via 301/410) | content-length threshold + retired-entry sampling | checker |
+| C14 | P1 | no anti-flicker script hiding the whole page (crawlers may get a blank) | grep known patterns + rendered first screen non-blank | checker |
+| C16 | P1 | snippet controls: max-snippet:-1 + max-image-preview:large | fetch the page, check robots meta | checker |
+| C24 | P1 | viewport meta includes width=device-width | fetch the page, check meta | checker |
+| C17 | P2 | heading hierarchy: exactly one h1, h2->h3 with no skipped levels | parse the DOM heading sequence | checker |
+| C18 | P2 | every img has explicit width/height + alt | DOM/template grep | site CI + checker |
+| C19 | P2 | full Open Graph set + twitter:card: social preview cards complete and correct | fetch the page, check meta; image declared 1200×630; og:type × JSON-LD article types cross-checked | checker |
+| C20 | P2 | redirect hops <=1: no chained redirects | count redirect chain length while fetching | checker |
+| C15 | P2 | render cost not per-request: SSR needs CDN caching (s-maxage + SWR), SSG exempt | curl response headers × the declared rendering strategy | checker |
+| C25 | P2 | no mixed content: no http:// subresources on HTTPS pages | scan the URL scheme of img/script/iframe/link etc. subresources | checker |
 
-## 三、条件项(人审项,不进 checker 脚本)
+## 3. Conditional (human review, not in the checker)
 
-| ID | 优先级 | 检查 | 触发条件 | 判定 | 执行层 |
+| ID | Priority | Check | Trigger | Verdict method | Layer |
 |---|---|---|---|---|---|
-| C21 | P0 | YMYL 信任块:作者、审核标注、权威引用 | `ymyl=true` | 上线前对照 C21 的 YMYL 信任块清单过检(见 references/checklist/references/C21.md) | 人审 |
-| C22 | P1 | hreflang 双向互指 + x-default | 站点有多语言配置 | 人工核对语言对两侧互指 | 人审 |
+| C21 | P0 | YMYL trust block: author, review attribution, authoritative citations | `ymyl=true` | before launch, walk C21's YMYL trust-block checklist (see references/checklist/references/C21.md) | human review |
+| C22 | P1 | hreflang reciprocal pairs + x-default | site has a multi-language config | manually verify each language pair points both ways | human review |
 
-> 编号纪律:编号为**永久 ID**(被 `checks` 表/豁免引用):只顺延(下一条 C27)、不回收、不重排。
-> **能并则并**:新检查若与旧条目**同优先级 + 同执行层 + 同一次抓取动作**,并进旧条目扩判定,不占新号
-> (2026-08-25 的 C2/C6/C8/C18/C19 五处即此);判定动作或优先级不同才新开号。
-> 表内行序 = 优先级分组(P0→P1→P2),同优先级内语义邻接;
-> 新增条目编号顺延,行位插进所属节的优先级段。
-> 优先级口径:**P0 = 存在层/事故层**(爬不到、收不进、合规或隐私风险,伤全站);
-> **P1 = 表现层**(排名与引用打折);**P2 = 优化项**。
-> 执行层「checker」= 手动运行的检查脚本(checker/);「站点 CI」= 各 repo 工程师侧。
+> Numbering discipline: IDs are **permanent** (referenced by the `checks` table and waivers): only extend (next is C27), never recycle, never renumber.
+> **Merge when you can**: a new check with the **same priority + same layer + the same fetch action** as an existing item folds into that item as an extended verdict, taking no new ID
+> (the five 2026-08-25 cases on C2/C6/C8/C18/C19 did exactly this); a different verdict action or priority earns a new ID.
+> Row order = priority groups (P0→P1→P2), semantically adjacent within a group;
+> new items take the next ID and slot into their section's priority band.
+> Priority scale: **P0 = existence/incident layer** (uncrawlable, unindexable, compliance or privacy risk — hurts the whole site);
+> **P1 = performance layer** (ranking and citation discounted); **P2 = optimization**.
+> Layer "checker" = the manually run check script (checker/); "site CI" = each repo's engineering side.
 
-## 权威依据(官方文档,C 集)
+## Authority sources (official docs, C set)
 
-| 规则 | 依据 |
+| Rule | Source |
 |---|---|
-| C 全集总纲 | [Google Search Essentials](https://developers.google.com/search/docs/essentials)(前 Webmaster Guidelines) |
-| C12 结构化数据 | [Google Structured Data 政策](https://developers.google.com/search/docs/appearance/structured-data/sd-policies) + [schema.org](https://schema.org) |
-| C8 canonical / C2 sitemap / robots | [Google Crawling & Indexing 文档](https://developers.google.com/search/docs/crawling-indexing)、[sitemaps.org](https://www.sitemaps.org)(协议本体) |
-| C22 hreflang / C26 语言重定向 | [Google 多语言版本指南](https://developers.google.com/search/docs/specialty/international/localized-versions)(明确:别按推测语言自动跳转,用 hreflang 声明 + 让用户自选) |
-| C4 CWV | [web.dev/vitals](https://web.dev/articles/vitals)(Chrome 团队,指标定义与阈值出处) |
-| C1 AI 爬虫 UA | [OpenAI bots](https://platform.openai.com/docs/bots)、[Perplexity crawlers](https://docs.perplexity.ai/guides/bots)、Anthropic support 的 ClaudeBot 页、[Google crawler 清单](https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers)(Google-Extended) |
-| C16 / C23 robots 指令 | [Google robots meta 标签文档](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag)(`max-snippet`/`noindex` 与 `X-Robots-Tag` 同源) |
-| C18 图片 alt | [Google 图片 SEO 最佳实践](https://developers.google.com/search/docs/appearance/google-images) |
-| C24 viewport | [Google:移动设备友好](https://developers.google.com/search/docs/appearance/mobile-friendly) |
-| C25 mixed content | [MDN:混合内容](https://developer.mozilla.org/docs/Web/Security/Mixed_content)(浏览器拦截行为的规范说明) |
-| C19 OG | [ogp.me](https://ogp.me)(The Open Graph protocol)+ 各社交平台卡片文档 |
-| C5 IndexNow(C2 配套) | [indexnow.org](https://www.indexnow.org)(Microsoft/Bing 主导的开放协议) |
-| C7 llms.txt | [llmstxt.org](https://llmstxt.org)(社区约定,非官方标准 — 唯一无大厂背书项) |
-| C10/C20 | Search Essentials 反 cloaking / 重定向指南(隶属 C 全集总纲链接) |
+| C set overall | [Google Search Essentials](https://developers.google.com/search/docs/essentials) (formerly Webmaster Guidelines) |
+| C12 structured data | [Google Structured Data policies](https://developers.google.com/search/docs/appearance/structured-data/sd-policies) + [schema.org](https://schema.org) |
+| C8 canonical / C2 sitemap / robots | [Google Crawling & Indexing docs](https://developers.google.com/search/docs/crawling-indexing), [sitemaps.org](https://www.sitemaps.org) (the protocol itself) |
+| C22 hreflang / C26 language redirects | [Google localized-versions guide](https://developers.google.com/search/docs/specialty/international/localized-versions) (explicit: don't auto-redirect by guessed language; declare with hreflang + let users choose) |
+| C4 CWV | [web.dev/vitals](https://web.dev/articles/vitals) (Chrome team; the source of metric definitions and thresholds) |
+| C1 AI crawler UAs | [OpenAI bots](https://platform.openai.com/docs/bots), [Perplexity crawlers](https://docs.perplexity.ai/guides/bots), Anthropic support's ClaudeBot page, [Google crawler list](https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers) (Google-Extended) |
+| C16 / C23 robots directives | [Google robots meta tag docs](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag) (`max-snippet`/`noindex` and `X-Robots-Tag` share one source) |
+| C18 image alt | [Google image SEO best practices](https://developers.google.com/search/docs/appearance/google-images) |
+| C24 viewport | [Google: mobile-friendly](https://developers.google.com/search/docs/appearance/mobile-friendly) |
+| C25 mixed content | [MDN: Mixed content](https://developer.mozilla.org/docs/Web/Security/Mixed_content) (the normative description of browser blocking behavior) |
+| C19 OG | [ogp.me](https://ogp.me) (The Open Graph protocol) + each social platform's card docs |
+| C5 IndexNow (C2's companion) | [indexnow.org](https://www.indexnow.org) (the open protocol led by Microsoft/Bing) |
+| C7 llms.txt | [llmstxt.org](https://llmstxt.org) (a community convention, not an official standard — the only item with no big-vendor backing) |
+| C10/C20 | Search Essentials anti-cloaking / redirect guidance (under the C-set overall link) |
 
-链接失效或政策更新属 harness 变更,人审后更新本表。
+Dead links or policy updates count as harness changes; update this table after human review.

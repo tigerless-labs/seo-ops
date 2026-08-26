@@ -8,8 +8,8 @@ on:
 
 jobs:
   check:
-    # macOS 也跑一遍:那是实际会用的第二个平台(~/Documents 可能被 iCloud 重定向)。
-    # Windows 不支持,也就不假装测过。
+    # Run macOS too: that is the second platform actually in use (~/Documents may be
+    # redirected by iCloud). Windows is unsupported, so we don't pretend to have tested it.
     strategy:
       fail-fast: false
       matrix:
@@ -23,18 +23,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.9"          # 文档承诺的下限,CI 就按下限跑
+          python-version: "3.9"          # the documented floor; CI runs on the floor
       - run: pip install -r scripts/requirements.txt
 
-      # ── 不联网的守卫 ─────────────────────────────────────
-      - name: 语法
+      # ── offline guards ───────────────────────────────────
+      - name: Syntax
         run: python -m compileall -q scripts
 
-      - name: 清单与脚本对齐 + config.example 与默认值一致
+      - name: Checklist and script in sync + config.example matches defaults
         run: python scripts/run.py --verify-only
 
-      # ── 目录解析:两个默认位置必须落在 home 下,且彼此分开 ──
-      - name: 默认目录解析(两处必须分开)
+      # ── directory resolution: the two defaults must land under home, and apart ──
+      - name: Default directory resolution (the two must be separate)
         run: |
           python - <<'PY'
           import sys, pathlib
@@ -44,27 +44,29 @@ jobs:
           print("state_dir :", state)
           print("config_dir:", cfg)
           assert state.name == "seo-ops" and cfg.name == "seo-ops", (state, cfg)
-          # 机密不能落在产出目录里 —— Documents 常被云同步/整夹分享
+          # Secrets must not land in the output directory — Documents is often cloud-synced / shared folder-wide
           assert cfg != state and state not in cfg.parents, (state, cfg)
           for p in (state, cfg):
               assert home in p.parents or p.is_absolute(), p
           PY
 
-      - name: 占位符守卫(别家 agent 抄了 ${...} 必须报错,不能静默落错地方)
+      - name: Placeholder guard (another agent copying ${...} must error, never silently land wrong)
         run: |
           set +e
           python scripts/run.py --state-dir '${CLAUDE_PROJECT_DIR}/.seo-ops' \
             --target http://127.0.0.1:9 >/dev/null 2>&1
-          test $? -eq 1 || { echo "::error::未被替换的变量没有被拦下"; exit 1; }
-          echo "✅ 守卫生效"
+          test $? -eq 1 || { echo "::error::the unsubstituted variable was not caught"; exit 1; }
+          echo "✅ guard works"
 
-      # ── 端到端:自建静态站,不打外网 ─────────────────────
-      # 不拿 example.com 之类的真站做冒烟 —— 外站抖一下 CI 就红,而这个仓库自己的
-      # 立场就是「假红比跑得慢危险」。本地起站既确定又快。
-      - name: 冒烟(本地静态站,走本地模式)
+      # ── end to end: self-hosted static site, no external network ─────────
+      # No example.com-style real sites for smoke — one wobble of an external site turns
+      # CI red, and this repo's own stance is "a false red is more dangerous than running
+      # slow". A local site is both deterministic and fast.
+      - name: Smoke (local static site, local mode)
         run: |
-          # 所有临时产物都落 $RUNNER_TEMP —— 工作区一个字节都不碰,
-          # 下一步的「干净」断言才是真断言,而不是「造了再删」。
+          # All temporary artifacts land in $RUNNER_TEMP — not one byte touches the
+          # workspace, so the later "clean" assertion is a real assertion, not
+          # "created then deleted".
           SITE="$RUNNER_TEMP/site"; OUT="$RUNNER_TEMP/out"; LOG="$RUNNER_TEMP/run.txt"
           mkdir -p "$SITE"
           cat > "$SITE/index.html" <<'HTML'
@@ -78,20 +80,21 @@ jobs:
           python -m http.server 8000 --directory "$SITE" &>/dev/null &
           for i in $(seq 20); do curl -sf http://127.0.0.1:8000/ >/dev/null && break; sleep 0.5; done
 
-          # 显式 --state-dir:CI 要的是可断言的落点,不是用户默认位置
+          # Explicit --state-dir: CI wants an assertable landing spot, not the user default
           python scripts/run.py --target http://127.0.0.1:8000 \
             --state-dir "$OUT" --page-sample 2 --max-pages 2 --sleep 0 | tee "$LOG"
 
-          grep -q "⚠️  漂移" "$LOG" && { echo "::error::检测到漂移"; exit 1; }
-          test -f "$OUT/out/checks.db" || { echo "::error::产出没落在 --state-dir 下"; exit 1; }
-          echo "✅ 冒烟通过"
+          grep -q "⚠️  drift" "$LOG" && { echo "::error::drift detected"; exit 1; }
+          test -f "$OUT/out/checks.db" || { echo "::error::outputs did not land under --state-dir"; exit 1; }
+          echo "✅ smoke passed"
 
-      - name: 工作区没被弄脏(报告与 key 绝不能进版本库)
+      - name: Workspace left clean (reports and keys must never enter the repo)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          # 不写中间文件 —— 上一版用 `git status | tee dirty.txt`,tee 造出的
-          # dirty.txt 被同一条 git status 看见,守卫拿自己当污染源,必红。
+          # No intermediate file — the previous version used `git status | tee dirty.txt`,
+          # and the dirty.txt tee created was seen by that same git status: the guard was
+          # its own pollution source, guaranteed red.
           dirty=$(git status --porcelain)
           test -z "$dirty" || {
-            echo "$dirty"; echo "::error::跑完 checker 后工作区不干净"; exit 1; }
-          echo "✅ 工作区干净"
+            echo "$dirty"; echo "::error::workspace dirty after the checker run"; exit 1; }
+          echo "✅ workspace clean"

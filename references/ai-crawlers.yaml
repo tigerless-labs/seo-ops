@@ -1,42 +1,42 @@
-# AI 爬虫 UA 清单(要求的组成部分;robots.txt 生成与 checker C1 判定的唯一数据源)
-# 收录判据:**拦了会损失可见性的 UA**。拦了不损失什么的,不进清单(见文末「核过但不收」)。
-# 新爬虫 → 改本文件走 PR,依据各厂官方爬虫文档(checklist 权威依据表);聚合类文章只当线索,不作依据。
+# AI crawler UA roster (part of the requirements; the sole data source for robots.txt generation and the checker's C1 verdict)
+# Inclusion criterion: **UAs that cost visibility if blocked**. UAs whose blocking costs nothing stay out (see "Vetted but not included" at the end).
+# New crawler → edit this file via PR, based on each vendor's official crawler docs (the checklist's authoritative-references table); aggregator articles are leads only, never the basis.
 #
-# 2026-08-24 校验:补 ClaudeBot(Anthropic 训练)、Bytespider(字节训练)、Meta-ExternalFetcher(Meta 用户代取)
-# 2026-08-25 校验:新增 search_classic 组 —— 经典搜索爬虫本身已是 AI 通道,
-#            此前不在清单里,意味着 C1 查不出「Googlebot 被 Disallow」这种最严重的事故。
+# 2026-08-24 review: added ClaudeBot (Anthropic training), Bytespider (ByteDance training), Meta-ExternalFetcher (Meta user fetch)
+# 2026-08-25 review: added the search_classic group — classic search crawlers are themselves an AI channel;
+#            they weren't in the roster before, meaning C1 couldn't catch "Googlebot is Disallowed", the worst possible incident.
 crawlers:
-  search_classic:  # 经典搜索爬虫 —— 同时是 AI 通道,拦了是全站级事故
-    - Googlebot      # Google 官方:覆盖 Search 及**所有 Search 功能** → AI Overviews / AI Mode 均在内
-    - Bingbot        # ChatGPT search 走 Bing 索引 → 这条是 GEO 依赖,不只是 Bing 流量
-  training:        # 训练爬虫:抓去进训练集
+  search_classic:  # classic search crawlers — also AI channels; blocking one is a site-wide incident
+    - Googlebot      # Google official: covers Search and **all Search features** → AI Overviews / AI Mode included
+    - Bingbot        # ChatGPT search runs on the Bing index → this is a GEO dependency, not just Bing traffic
+  training:        # training crawlers: fetch pages into training sets
     - GPTBot
     - ClaudeBot
-    - Google-Extended      # ⚠ 纯 robots.txt opt-out token,背后无实际爬虫(日志里查不到它)
-    - Applebot-Extended    # ⚠ 同上:只是 Apple Intelligence 训练的开关
+    - Google-Extended      # ⚠ pure robots.txt opt-out token, no actual crawler behind it (never shows up in logs)
+    - Applebot-Extended    # ⚠ same: just the switch for Apple Intelligence training
     - CCBot
     - Meta-ExternalAgent
     - Amazonbot
-    - Bytespider           # 已知部分不遵守 robots.txt
-  search:          # 检索爬虫:建实时搜索索引,对被引用最关键
+    - Bytespider           # known to partially ignore robots.txt
+  search:          # retrieval crawlers: build live search indexes; most critical for being cited
     - OAI-SearchBot
     - Claude-SearchBot
     - PerplexityBot
     - DuckAssistBot
-  user_fetch:      # 用户代取:对话中点开链接实时抓取(部分不完全遵守 robots.txt)
+  user_fetch:      # user fetch: real-time fetching when a link is opened in a conversation (some don't fully respect robots.txt)
     - ChatGPT-User
     - Claude-User
     - Perplexity-User
     - Meta-ExternalFetcher
-policy: allow      # 全放行(获客型站点)
+policy: allow      # allow all (customer-acquisition site)
 
-# ── 核过但不收 ────────────────────────────────────────────────
-# GoogleOther —— Google 官方文档明写「generic crawler,**no specific product impact**」,
-#   拦了不损失任何产品。聚合文章把它列为 tier-2 建议放行,与厂商文档冲突;以厂商为准,不收。
-#   (GoogleOther-Image / -Video / Google-CloudVertexBot / Storebot-Google 同理,产品面不相关。)
-# YouBot · iaskspider · Diffbot · omgilibot · img2dataset —— 长尾 AI 搜索与数据聚合。
-#   policy 是 allow,漏一个的代价≈0(不在清单里的 UA 本来也不会被特意拦);
-#   而每收一条就多一条要跟着厂商文档维护的东西。回报对不上,不收。
+# ── Vetted but not included ────────────────────────────────────────────────
+# GoogleOther — Google's official docs state "generic crawler, **no specific product impact**":
+#   blocking it costs no product. Aggregator articles list it as a tier-2 recommended allow, conflicting with the vendor docs; the vendor wins — not included.
+#   (GoogleOther-Image / -Video / Google-CloudVertexBot / Storebot-Google likewise: no relevant product surface.)
+# YouBot · iaskspider · Diffbot · omgilibot · img2dataset — long-tail AI search and data aggregators.
+#   policy is allow, so missing one costs ~0 (a UA not in the roster wouldn't be specifically blocked anyway);
+#   while each addition is one more entry to keep maintained against vendor docs. The return doesn't add up — not included.
 #
-# ── 待核(有线索,未见官方文档确认,确认后再合)──────────────
-# FacebookBot(Meta,与 Meta-ExternalAgent 是两个)· anthropic-ai(Anthropic 旧 UA)· cohere-ai
+# ── Pending review (leads exist, no official doc confirmation yet; merge after confirming) ──────────────
+# FacebookBot (Meta, distinct from Meta-ExternalAgent) · anthropic-ai (Anthropic's legacy UA) · cohere-ai

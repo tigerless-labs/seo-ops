@@ -1,48 +1,57 @@
-# content 供给清单(T 集 — content 团队的责任清单)
+# content supply checklist (the T set — the content team's responsibility list)
 
-> 与 [checklist(C 集)](../checklist/checklist.md) 同构:**C 集查页面产出对不对,T 集定 content
-> 该供什么** —— 每条 T 标着它喂的下游 C 项,T 欠供 ⇒ 对应 C 红,责任可回溯。
-> **补集定位**:页面 doc 照旧交付,已经在交的不重复列;本表只列**它不覆盖的
-> SEO 供给项**,交付形态是**页面 doc 末尾的「附录 · SEO」**,成段成节、
-> 不打散进正文,头部也不用腾位置。字段同步登记进 content 团队自有的登记表 ——
-> 附录是写作面,表是登记面,checker 状态在表上回显红绿。
-> 每条的详细说明各自一篇,住 [references/](references/);动手写页面时用
-> [page-doc-template.md](page-doc-template.md) —— **本表是清单,模板是填空面**。
+> Mirrors the [checklist (C set)](../checklist/checklist.md): **the C set checks whether page
+> output is right; the T set defines what content must supply** — each T is tagged with the
+> downstream C check it feeds, so T under-supplied ⇒ the matching C goes red, and responsibility
+> traces back.
+> **Complement positioning**: page docs ship as before; what's already being delivered is not
+> re-listed. This table only lists the **SEO supply items they don't cover**, delivered as an
+> **"Appendix · SEO" at the end of the page doc** — one contiguous section, not scattered into
+> the body, and the header gives up no room either. The fields are also registered in the
+> content team's own registry — the appendix is the writing surface, the registry is the
+> bookkeeping surface, and checker status echoes red/green on the registry.
+> Each entry has its own detailed page under [references/](references/); when actually writing
+> a page use [page-doc-template.md](page-doc-template.md) — **this table is the checklist, the
+> template is the fill-in surface**.
 
-## 一、站级(一次性供给 + 低频维护)
+## 1. Site-level (one-time supply + low-frequency maintenance)
 
-| ID | 供给 | 说明 | 下游 |
+| ID | Supply | Notes | Downstream |
 |---|---|---|---|
-| T1 | 品牌名统一写法 + 官方社媒账号清单 | Organization `sameAs` 的数据源;三站互指同一实体 | C12 |
-| T2 | 重点页清单 + 每页一句话摘要 | llms.txt 收谁由 content 团队判断,每条配一句话摘要(文件生成归 frontend) | C7 |
+| T1 | Canonical brand-name spelling + official social account list | Data source for Organization `sameAs`; the three sites point at one entity | C12 |
+| T2 | Key-page list + one-line summary per page | Which pages go into llms.txt is the content team's call, one-line summary each (file generation belongs to frontend) | C7 |
 
-## 二、每页必交(页面 doc 末尾「附录 · SEO」)
+## 2. Required per page (the "Appendix · SEO" at the end of the page doc)
 
-| ID | 供给 | 约束 | 下游 |
+| ID | Supply | Constraints | Downstream |
 |---|---|---|---|
-| T3 | URL | 语义化路径、层级反映品类、禁歧义词;新增 URL 过评审 | |
-| T4 | **`ymyl` 判定** | 内容影响读者健康 / 财务 / 法律 / 人身安全即 `true`;**拿不准标 `true`**。这是条件项的唯一开关,漏标 = C21 整条失效 | C21 |
-| T5 | title / description | title ≤60、desc ≤150,站级公式,每页唯一不复制 | C11 |
-| T6 | H1 一句 | 一页一个,与 title 同主题(文字可不同) | C17 |
-| T7 | H2/H3 大纲 | **在 SEO 附录里结构化交(`outline`),不混进正文**;逐级不跳;指南 / FAQ 类内容:问句原样、每节结论前置 | C17 · C7/C12 的内容形状要求 |
-| T14 | 图片 alt 文案 | **按图片文件名索引交**(`images[].file` + `alt`,不用「图 1 / 图 2」—— 原文里图片增删移动,序号会错位);内容图逐张一句描述(讲图里是什么,不堆关键词);纯装饰图标注「装饰」(前端落成 `alt=""`) | C18 |
-| T8 | 语言配置与双语成对 | en/zh 同交不留单边;单语页显式声明 en only / zh only | C22 |
-| T9 | OG 分享文案 **+ 分享图指定** | 文案可与 title/desc 同源,差异化时单独供;分享图**缺省取正文主图**,主图不适合当卡片时(尺寸不对、是图标/装饰图)在此指定一张 | C19 |
-| T10 | date_modified 维护 | 内容实质更新时同步改(喂 JSON-LD 与可见标注,同源)。**为 GEO 保留**:AI 回答明显偏好近期内容,费率 / 政策 / 流程类尤甚 | C21 |
+| T3 | URL | semantic path, hierarchy reflects category, no ambiguous words; new URLs go through review | |
+| T4 | **`ymyl` verdict** | `true` if the content affects the reader's health / finances / legal standing / physical safety; **when unsure, mark `true`**. This is the only switch for the conditional items; a missed flag = all of C21 disabled | C21 |
+| T5 | title / description | title ≤60, desc ≤150, site-level formula, unique per page — no copy-paste | C11 |
+| T6 | one H1 line | one per page, same topic as the title (wording may differ) | C17 |
+| T7 | H2/H3 outline | **delivered structured in the SEO appendix (`outline`), not mixed into the body**; levels never skip; guide / FAQ content: questions verbatim, conclusion first in each section | C17 · content-shape requirements of C7/C12 |
+| T14 | image alt copy | **keyed by image filename** (`images[].file` + `alt`, not "figure 1 / figure 2" — images get added, removed, and moved in the body, and the numbering shifts); one descriptive sentence per content image (say what's in the image, don't stack keywords); pure decoration marked "decorative" (frontend renders it as `alt=""`) | C18 |
+| T8 | language config and bilingual pairs | en/zh delivered together, no one-sided pages; single-language pages declare en only / zh only explicitly | C22 |
+| T9 | OG share copy **+ share-image designation** | copy may share its source with title/desc; supply separately when differentiated; the share image **defaults to the body's lead image** — when that image doesn't work as a card (wrong size, an icon / decorative image), designate one here | C19 |
+| T10 | date_modified upkeep | update in step with substantive content changes (feeds JSON-LD and the visible label, one source). **Kept for GEO**: AI answers clearly prefer recent content, above all for rates / policy / process pages | C21 |
 
-## 三、条件项(flag / 内容条件触发)
+## 3. Conditional (flag / content-condition triggered)
 
-> 触发条件是 **flag 或页面上有没有那个东西**,不是页型 —— 页型条件 2026-08-25 整体退役
-> (Google 不消费 `WebPage` 子类型,而页型声明要 content 逐页维护、漏标即静默失效;
-> 理由见 [C12.md](../checklist/references/C12.md) 开头说明)。
+> The trigger is a **flag or whether that thing is on the page**, not page type — page-type
+> conditions were retired wholesale on 2026-08-25 (Google doesn't consume `WebPage` subtypes,
+> while page-type declarations need content to maintain per page and fail silently when missed;
+> rationale at the top of [C12.md](../checklist/references/C12.md)).
 
-| ID | 触发 | 供给 | 下游 |
+| ID | Trigger | Supply | Downstream |
 |---|---|---|---|
-| T12 | `ymyl=true`([T4](references/T4.md)) | 作者实名 + 头衔 + 资质;审核人 + 审核日期(审核**真实发生**,R2);citations 官方来源(域 ∈ 白名单) | C21 |
-| T13 | 页面要展示产品与价格 | 产品名 / 卖点 / 价格等人读字段(结构化登记,供 JSON-LD 取值) | C12 |
+| T12 | `ymyl=true` ([T4](references/T4.md)) | author real name + title + credential; reviewer + review date (the review **actually happened**, R2); citations from official sources (domain ∈ allowlist) | C21 |
+| T13 | the page shows a product with pricing | human-readable fields — product name / selling points / price etc. (registered structured, JSON-LD reads its values from here) | C12 |
 
-> 编号纪律同 C 集:T 号永久,只顺延(下一条 T15)、不回收;行序表达语义邻接。
-> 验收:checker 跑 C 集,红项按「下游」列反查到 T,即知是 content 欠供还是 frontend 未落。
+> Numbering discipline matches the C set: T numbers are permanent, only append (next is T15),
+> never reuse; row order expresses semantic adjacency.
+> Acceptance: the checker runs the C set; trace red items back through the "Downstream" column
+> to a T and you know whether content under-supplied or frontend didn't land it.
 
-> **本表只放当前生效的条目。** 增删了什么、为什么、以及判过但不加 T 的 C 项,
-> 全在 [decisions.md](../decisions.md) —— 清单答「现在要交什么」,留档答「为什么是这些」。
+> **This table holds only the entries currently in force.** What was added or removed and why,
+> and the C checks judged but given no T, all live in [decisions.md](../decisions.md) — the
+> checklist answers "what to deliver now", the log answers "why these".

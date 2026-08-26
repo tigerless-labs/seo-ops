@@ -1,11 +1,11 @@
-# 站点花名册 —— 复制成 sites.yaml 后按自己的站填。
-# 只跑单个站不需要本文件:python3 checker/run.py --target https://example.com
+# Site roster — copy to sites.yaml, then fill in your own sites.
+# Not needed for a single site: python3 scripts/run.py --target https://example.com
 sites:
-  - id: example-com                        # 报告文件名与 checks 表的 site 列用它
-    production: https://www.example.com    # 站点根 URL(origin),必填
-    rendering: ssr                         # ssr / ssg / isr —— C15 按此分支;不填记 N.A.
-    sitemap: https://www.example.com/sitemap.xml   # 不填则默认 <production>/sitemap.xml
-    samples:                               # 必测页(sitemap 之外额外加抓的);ymyl 触发 C21 人审
+  - id: example-com                        # used for the report filename and the checks table's site column
+    production: https://www.example.com    # site root URL (origin), required
+    rendering: ssr                         # ssr / ssg / isr — C15 branches on it; N.A. if unset
+    sitemap: https://www.example.com/sitemap.xml   # defaults to <production>/sitemap.xml if unset
+    samples:                               # must-test pages (fetched in addition to the sitemap); ymyl triggers the C21 human review
       - { url: /,                 }
       - { url: /pricing,          }
       - { url: /guide/how-to-xxx, ymyl: true }

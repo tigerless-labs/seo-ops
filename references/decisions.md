@@ -1,32 +1,34 @@
-# 决策留档(判过但没落成条目的)
+# Decision log (judged but not landed as entries)
 
 Ryan · 2026-08-26 · `accepted`
 
-> 清单(C 集 / T 集)只放**当前生效的条目**:一条现在要不要交、怎么交,看清单;
-> **一条为什么长这样、为什么没有别的条**,看这里。
-> 议过的结论住这份留档,免得下次有人重新提一遍再从头议一次。
+> The checklists (C set / T set) hold only **entries currently in force**: whether and how to
+> deliver something now, read the checklist; **why an entry looks the way it does, and why
+> there is no other entry**, read this.
+> Settled conclusions live in this log so nobody re-raises them next time and argues from scratch.
 
-## 一、T 集的增删(编号退役不回收,下一条 T15)
+## 1. T-set additions and removals (retired numbers are not reused; next is T15)
 
-| 日期 | 变更 | 判据 |
+| Date | Change | Rationale |
 |---|---|---|
-| 2026-08-25 | **增 T14** 图片 alt 文案 | 只有看过图的人写得出这句;AI 读不到图,只能读到 alt |
-| 2026-08-25 | **T9 补分享图指定** | 缺省取正文主图即可,但主图是图标 / 尺寸不对 / 太长时,选哪张只有人能定 |
-| 2026-08-25 | **删 T11** 状态维护 | 页面生命周期状态住 content 团队自有的登记表,由他们与 repo 团队 API 维护 —— 不是对本系统的供给项 |
-| 2026-08-25 | **页型供给整体退役**,T4 从「页型 + ymyl」收成 `ymyl` 单项 | Google 不消费 `WebPage` 子类型;页型要 content 逐页维护、漏标即静默失效 —— 要人天天喂又没有消费方的输入不值得留(详见 [C12.md](checklist/references/C12.md) 开头) |
-| 2026-08-26 | **T10 一度删除,当日撤回** | 保留理由是 **GEO**:更新时间是 AI 引用时的强偏好信号;它同时是 C12 `Article` 的必填字段与 C21 人审「声明 ↔ 可见」的比对项,删掉就没有值来源 |
+| 2026-08-25 | **Add T14** image alt copy | Only someone who has seen the image can write that sentence; AI can't read the image, only the alt |
+| 2026-08-25 | **T9 gains share-image designation** | Defaulting to the body's lead image is fine, but when that image is an icon / wrong size / too long, only a human can pick the replacement |
+| 2026-08-25 | **Drop T11** status upkeep | Page lifecycle status lives in the content team's own registry, maintained by them via the repo team's API — not a supply item for this system |
+| 2026-08-25 | **Page-type supply retired wholesale**; T4 narrowed from "page type + ymyl" to the single `ymyl` flag | Google doesn't consume `WebPage` subtypes; page type needs content to judge every page and fails silently when missed — an input that needs daily human feeding with no downstream consumer isn't worth keeping (see the top of [C12.md](checklist/references/C12.md)) |
+| 2026-08-26 | **T10 deleted, reinstated the same day** | Kept for **GEO**: update time is a strong preference signal when AI cites; it is also a required field of C12 `Article` and the "declared ↔ visible" comparison item in the C21 human review — delete it and there is no value source |
 
-## 二、判过但不加 T 的 C 项(2026-08-25)
+## 2. C checks judged but given no T (2026-08-25)
 
-判据统一:一条 C 要不要生出 T,看它的**判定输入里有没有只有人能写出来的东西**。
-alt 文案有(只有看过图的人写得出)→ [T14](content/content-checklist.md);
-`og:type` 没有(模板看正文就能定)→ 不加。
+One uniform criterion: whether a C check spawns a T depends on **whether its verdict inputs
+contain something only a human can write**.
+Alt copy does (only someone who has seen the image can write it) → [T14](content/content-checklist.md);
+`og:type` doesn't (the template can decide from the body) → no T.
 
-| C 项 | 为什么不落到 content |
+| C check | Why it doesn't land on content |
 |---|---|
-| C2 sitemap 分片 ≤5 万 | sitemap 从路由表/内容表**派生**,规模是派生结果,没有人可供的字段 |
-| C8 header canonical 两路不冲突 | 冲突源是 CDN/反代规则,纯基础设施 |
-| C19 的 `og:type` 取值 | 模板按页面自身内容定(有文章正文就 `article`),frontend 派生;没有只有人写得出来的部分 |
-| C23 收录页无 noindex | 模板与部署配置;content 决定「这页要不要收录」的表达方式是**进不进 sitemap**,不是写 meta |
-| C24 viewport meta | base 模板一行,与内容无关 |
-| C25 无 mixed content | content 供稿里贴 `http://` 外部图确实是常见来源,但**正解是 frontend 入库时统一改写协议或转存自家 CDN**([C25.md](checklist/references/C25.md) 实现指导)—— 一次性堵住,好过要求每个写手每次都记得。**约束该放在能一次解决的地方,不放在每次都要人记住的地方。** |
+| C2 sitemap shards ≤50k | The sitemap is **derived** from the route/content tables; its size is a derived result, no human-suppliable field |
+| C8 the two canonical paths (header vs HTML) don't conflict | The conflict source is CDN/reverse-proxy rules, pure infrastructure |
+| C19's `og:type` value | The template decides from the page's own content (article body present → `article`), frontend derives it; nothing only a human could write |
+| C23 indexed pages carry no noindex | Template and deployment config; content expresses "should this page be indexed" through **sitemap membership**, not by writing meta |
+| C24 viewport meta | One line in the base template, unrelated to content |
+| C25 no mixed content | Writers pasting `http://` external images into copy is indeed a common source, but **the real fix is frontend rewriting the protocol or re-hosting on our own CDN at ingest** (implementation guidance in [C25.md](checklist/references/C25.md)) — plug it once, better than asking every writer to remember every time. **Put the constraint where it can be solved once, not where a human must remember each time.** |
