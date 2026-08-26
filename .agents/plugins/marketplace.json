@@ -1,0 +1,10 @@
+{
+  "name": "seo-ops",
+  "plugins": [
+    {
+      "name": "seo-ops",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE" }
+    }
+  ]
+}

@@ -84,4 +84,4 @@ MAX_REDIRECT_HOPS: 1
 DOC_BASE_URL: "https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references"
 
 # display-width cap for the table's evidence summary; full evidence in the report's closing evidence section, untruncated
-EVIDENCE_SUMMARY_WIDTH: 22
+EVIDENCE_SUMMARY_WIDTH: 20

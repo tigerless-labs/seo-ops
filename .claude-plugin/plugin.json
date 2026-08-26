@@ -1,0 +1,7 @@
+{
+  "name": "seo-ops",
+  "version": "0.1.0",
+  "description": "SEO foundation checks as an Agent Skill: give it a URL, get a crawler's-eye pass/fail report with evidence. 26 structural checks, zero LLM, deterministic.",
+  "author": { "name": "Tigerless Labs" },
+  "homepage": "https://github.com/tigerless-labs/seo-ops"
+}

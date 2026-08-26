@@ -263,7 +263,7 @@ DOC_BASE_URL = "https://github.com/tigerless-labs/seo-ops/blob/main/references/c
 # and a wrapped evidence cell stacks into the next row, covering inline links.
 # 22 + ellipsis + the " more" link is about 28 wide, leaving margin at common column
 # widths (about 30).
-EVIDENCE_SUMMARY_WIDTH = 22   # display-width cap for the table's evidence summary (target: one line); full evidence never truncated
+EVIDENCE_SUMMARY_WIDTH = 20   # display-width cap for the evidence summary (goal: one line incl. the "full ↓" link); full evidence is never truncated
 
 # ── C11 title / description ──────────────────────────
 TITLE_MAX_CHARS = 60

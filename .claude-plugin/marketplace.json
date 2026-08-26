@@ -1,0 +1,11 @@
+{
+  "name": "seo-ops",
+  "owner": { "name": "Tigerless Labs" },
+  "plugins": [
+    {
+      "name": "seo-ops",
+      "source": "./",
+      "description": "SEO foundation checks as an Agent Skill: give it a URL, get a crawler's-eye pass/fail report with evidence."
+    }
+  ]
+}

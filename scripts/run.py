@@ -1300,7 +1300,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
             # characters, no corruption.
             summary = md_cell(flat, CFG.EVIDENCE_SUMMARY_WIDTH)
             if disp_width(md_cell(flat)) > CFG.EVIDENCE_SUMMARY_WIDTH:
-                summary += f" [full](#{cid.lower()})"
+                summary += f" [full \u2193](#{cid.lower()})"
                 details.append((cid, name, parts))
             # Docs column: points at the item's canonical write-up — verdict criteria,
             # common mistakes, authority sources, and how to fix all live there.
@@ -1330,6 +1330,13 @@ def render_report(site, R, mode, ok_n, total_n, args):
             lines += ["```", ""]
     lines.insert(5, f"**Verdict: 🔴 {counts['fail']} (P0: {counts['fail_p0']}) • "
                     f"✅ {counts['pass']} • ⚪ N.A. {counts['na']} • 👤 human review 2**")
+    if details:
+        # Text-level pointer, not just the anchor: some viewers can't make in-page
+        # anchors jump — the words alone must tell the reader where the full
+        # evidence lives.
+        lines.insert(5, "- Evidence cells are one-line summaries; **full \u2193** jumps to"
+                        " \"Evidence (complete, untruncated)\" at the end of this file"
+                        " — if the link doesn't jump in your viewer, scroll there")
     assert_table_sane(lines)          # a forgotten md_cell call explodes here, not when someone reads the report
     return "\n".join(lines)
 
