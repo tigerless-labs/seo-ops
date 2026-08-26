@@ -405,7 +405,8 @@ def check_site(site, f, args):
         over = [(s, n) for s, n in sitemap_shards if n > CFG.SITEMAP_MAX_URLS_PER_FILE]
         if over:
             problems.append("shard over the protocol cap (must move to index shards): " +
-                            [f"{s} {n} entries > {CFG.SITEMAP_MAX_URLS_PER_FILE}" for s, n in over[:3]])
+                            "; ".join(f"{s} {n} entries > {CFG.SITEMAP_MAX_URLS_PER_FILE}"
+                                      for s, n in over[:3]))
         def probe(u):
             # Do not follow redirects: the sitemap's semantics is "these URLs ARE the
             # canonical addresses" — the **starting point** must be 200. Following would
