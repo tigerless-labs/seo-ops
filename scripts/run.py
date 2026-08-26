@@ -1075,6 +1075,31 @@ def verify_config_example():
            "run `python3 scripts/config.py --write-example` to regenerate")
     print(msg, flush=True); return [msg]
 
+def verify_wrapper_sync():
+    """Drift guard three: the plugin adapter (skills/seo-ops/SKILL.md) must carry the same
+    frontmatter description as the canonical root SKILL.md.
+
+    Plugin skill discovery (Claude Code and Codex alike) demands the skills/<name>/SKILL.md
+    layout, so the adapter duplicates the routing metadata — the one piece that must never
+    drift, because the description is what makes the skill trigger at all. The body is not
+    compared: the adapter's body is deliberately just a pointer at the root file.
+    """
+    repo = Path(__file__).resolve().parents[1]
+    root_md, wrap_md = repo / "SKILL.md", repo / "skills" / "seo-ops" / "SKILL.md"
+    if not root_md.exists():
+        return []                          # unusual layout; nothing to anchor the comparison to
+    if not wrap_md.exists():
+        msg = "⚠️  drift: skills/seo-ops/SKILL.md (plugin adapter) is missing"
+        print(msg, flush=True); return [msg]
+    def desc(f):
+        return next((ln for ln in f.read_text().splitlines()
+                     if ln.startswith("description:")), "")
+    if desc(root_md) == desc(wrap_md):
+        return []
+    msg = ("⚠️  drift: skills/seo-ops/SKILL.md's description differs from SKILL.md's — "
+           "copy the root frontmatter description into the adapter")
+    print(msg, flush=True); return [msg]
+
 def bad_link_evidence(bad):
     """C6's bad-outlink evidence: grouped by 4xx semantics. The verdict is unchanged (all
     red — crawlers follow the link into a wall and burn crawl budget), but **the name must
@@ -1432,7 +1457,7 @@ def main():
     args = ap.parse_args()
 
     if args.verify_only:
-        drift = verify_checklist_sync() + verify_config_example()
+        drift = verify_checklist_sync() + verify_config_example() + verify_wrapper_sync()
         print("✅ checklist and script in sync" if not drift else f"🔴 {len(drift)} drifts", flush=True)
         sys.exit(1 if drift else 0)
 

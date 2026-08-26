@@ -33,19 +33,21 @@ Usage details live in [SKILL.md](SKILL.md).
 Install https://github.com/tigerless-labs/seo-ops as a skill.
 ````
 
-**Or install by hand** — Claude Code (`~/.claude/skills/` for all projects, `<repo>/.claude/skills/` for one project):
+**Or install as a plugin** — Claude Code (type in the input box):
 
-```bash
-git clone https://github.com/tigerless-labs/seo-ops.git ~/.claude/skills/seo-ops
+```
+/plugin marketplace add tigerless-labs/seo-ops
+/plugin install seo-ops@seo-ops
 ```
 
-Codex (`~/.agents/skills/` for all projects, `<repo>/.agents/skills/` for one repo):
+Codex:
 
 ```bash
-git clone https://github.com/tigerless-labs/seo-ops.git ~/.agents/skills/seo-ops
+codex plugin marketplace add tigerless-labs/seo-ops
+codex plugin add seo-ops@seo-ops
 ```
 
-Update: `git pull`. New skills are discovered at session start — if it doesn't show up, start a new session.
+If the skill doesn't show up, start a new session. Update: `/plugin marketplace update seo-ops` (Claude Code) / `codex plugin marketplace upgrade` (Codex).
 
 **Once installed**, type `/seo-ops` — or just describe the task; both trigger it:
 
