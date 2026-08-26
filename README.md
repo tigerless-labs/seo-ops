@@ -23,14 +23,8 @@ Usage details live in [SKILL.md](SKILL.md).
 **Let your agent install it** — copy the block below to your agent:
 
 ````
-Install https://github.com/tigerless-labs/seo-ops as a skill:
+Install https://github.com/tigerless-labs/seo-ops as a skill.
 
-1. Clone the whole repo (scripts/ and references/ are runtime dependencies) into your
-   skills directory, directory name seo-ops
-   (Claude Code: ~/.claude/skills/ or <repo>/.claude/skills/; Codex: ~/.agents/skills/ or <repo>/.agents/skills/)
-2. Smoke test: python3 <skill>/scripts/run.py --verify-only should print
-   "✅ checklist and script in sync" (needs requests + PyYAML; install them if missing)
-3. If the skill doesn't appear, tell me to start a new session so it gets discovered
 ````
 
 **Or install by hand** — Claude Code (`~/.claude/skills/` for all projects, `<repo>/.claude/skills/` for one project):
