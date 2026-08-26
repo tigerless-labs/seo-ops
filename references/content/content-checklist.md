@@ -1,6 +1,6 @@
 # content 供给清单(T 集 — content 团队的责任清单)
 
-**Metadata** — 决策:Ryan · 起草:Claude / 评审:Ryan / 日期:2026-08-24 / 状态:`draft`
+Ryan · 2026-08-24 · `accepted`
 (2026-08-25 随 C 集补缺同步:新增 T14(alt 文案);T9 补分享图指定;**T11 状态维护删除**
 ——页面生命周期状态住 content 团队自有的登记表,由他们与 repo 团队 API 维护,不是对本系统的供给项;
 编号退役不回收,退役记录见 git 历史。
@@ -16,15 +16,12 @@ C 集另六处变更(C2/C8/C23/C24/C25 与 C19 的 og:type)判定输入全在 fr
 这条不是为搜索排名留的,是为被引用留的。)
 
 > 与 [checklist(C 集)](../checklist/checklist.md) 同构:**C 集查页面产出对不对,T 集定 content
-> 该供什么**——每条 T 都标注它喂的下游 C 项,T 欠供 ⇒ 对应 C 红,责任可回溯。
-> **定位 = 补集**:常规页面 doc(按 layout 分段写文案,如现有 APSU Website 页面 doc)+ layout
-> 设计 + URL 照旧交付,已经在交的不重复列;本清单只列**常规页面 doc 通常不覆盖的 SEO 供给项**,
-> 作为每页 doc 顶部的「SEO 头部块」补进去。字段同步登记进 content 团队自有的登记表
-> 表——doc 是写作面,表是登记面,checker 状态列在表上回显红绿。
-> **每条目的详细说明各自一篇,住 [references/](references/)**(介绍 + 怎么交 + 常见错误);
-> 本表是索引与供给一览,写页面时对着 references 逐条交。
-> **动手写页面时用 [page-doc-template.md](page-doc-template.md)** —— 本表的全部字段已排成
-> 可直接复制的「SEO 头部块」,带占位符、特殊页型的附加注意与交付前自查;本表是清单,模板是填空面。
+> 该供什么** —— 每条 T 标着它喂的下游 C 项,T 欠供 ⇒ 对应 C 红,责任可回溯。
+> **补集定位**:正文、layout、URL 照旧交付,已经在交的不重复列;本表只列**常规页面 doc
+> 不覆盖的 SEO 供给项**,补进每页 doc 顶部的「SEO 头部块」。字段同步登记进 content 团队
+> 自有的登记表 —— doc 是写作面,表是登记面,checker 状态在表上回显红绿。
+> 每条的详细说明各自一篇,住 [references/](references/);动手写页面时用
+> [page-doc-template.md](page-doc-template.md) —— **本表是清单,模板是填空面**。
 
 ## 一、站级(一次性供给 + 低频维护)
 
