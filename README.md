@@ -1,8 +1,14 @@
-# seo-ops
+<h1 align="center">seo-ops</h1>
+<p align="center"><strong>SEO Foundation Checks as an Agent Skill</strong></p>
 
-A checklist and checker for **SEO foundation engineering** — the machine-readable structure a site needs so search engines and AI retrieval can **fetch, read, index, and cite** it.
+<p align="center">
+  <img src="https://github.com/tigerless-labs/seo-ops/actions/workflows/ci.yml/badge.svg" alt="CI" /> <img src="https://img.shields.io/badge/python-3.9%2B-blue.svg" alt="python" /> <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey.svg" alt="platform" /> <img src="https://img.shields.io/badge/checks-26-brightgreen.svg" alt="checks" />
+</p>
 
-**The only required input is a URL.** No code access, no framework integration — the checker fetches the site like a crawler and produces a pass/fail report with evidence.
+**seo-ops checks a site's SEO foundation — the machine-readable structure search engines and AI
+retrieval need to fetch, read, index, and cite it.** The only required input is a URL: the checker
+fetches the site like a crawler — no code access, no framework integration — and produces a
+pass/fail report with evidence.
 
 The whole repo is these three pieces:
 
