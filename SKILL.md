@@ -23,24 +23,11 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 | 域名 / URL | 跑 checker 出报告 |
 | 代码、模板、PR、页面文件 | 不跑脚本,对照 C 集逐条审机器可读产出面 |
 
-目的确认之后就**不要再反复请示**,按下面的流程走完。
+目的确认之后就**不要再反复请示**;要跑脚本就照「跑 checker」一节走完。
 
 两条路径都**以 [references/checklist/checklist.md](references/checklist/checklist.md) 为准**,
 不凭印象判;某条不确定就读 `references/checklist/references/C<N>.md`。
 引用条目写编号(`C12`),编号是永久 ID,不要改号或重排。
-
-### 跑 checker 的流程
-
-**确认目标是 origin → 一次问完必要配置 → 直接跑。** 先跑起来,别为可选项停下:
-
-| | 什么时候才需要 | 没有的后果 |
-|---|---|---|
-| 目标 origin | 总是 | 跑不了 |
-| `sites.yaml` | 多站,或要声明渲染策略 / 标 YMYL 页 | 单站用 `--target`;C15 记 `need-declaration`、C21 无人审清单 |
-| `.env` 里的 CrUX key | **只在用户要「完整判定」时** | **非必需**,C4 记 `need-crux-key`,其余 25 条照跑 |
-| `config.yaml` | 只在要改阈值时 | 无,全走默认 |
-
-271 页的站约 7 分钟,跑之前告诉用户大概要等多久。
 
 ### 报告出来之后
 
@@ -56,7 +43,7 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 ### 环境
 
 ```bash
-python3 -c "import requests, yaml"     # 只要这两个依赖
+python3 -c "import requests, yaml" || pip install -r scripts/requirements.txt
 ls -a ~/.config/seo-ops/               # .env 是隐藏文件,不带 -a 看着像空目录
 ```
 
@@ -129,16 +116,21 @@ skill 本体(只读,更新时整包覆盖 —— **一个字节都别往里写**
 
 ## 跑 checker
 
-```bash
-pip install -r scripts/requirements.txt      # 首次;只要 requests 和 PyYAML
-python3 scripts/run.py --target https://example.com
-```
+### 先确认这些
 
-产出与配置的落点见上一节「状态文件都在哪」。**skill 目录零写入。**
+**确认目标是 origin → 一次问完必要配置 → 直接跑。** 先跑起来,别为可选项停下:
+
+| | 什么时候才需要 | 没有的后果 |
+|---|---|---|
+| 目标 origin | 总是 | 跑不了 |
+| `sites.yaml` | 多站,或要声明渲染策略 / 标 YMYL 页 | 单站用 `--target`;C15 记 `need-declaration`、C21 无人审清单 |
+| `.env` 里的 CrUX key | **只在用户要「完整判定」时** | **非必需**,C4 记 `need-crux-key`,其余 25 条照跑 |
+| `config.yaml` | 只在要改阈值时 | 无,全走默认 |
 
 **一个「站」= 一个 origin**(scheme + host[:port],不带 path/query)。子域名算独立的站
 (`blog.` / `docs.` 各算一个);裸域与 www 不算两个 —— 它们该归一到同一个 canonical host,
 这正是 C3 要检的,所以只认你选定的那一个。
+产出与配置的落点见上一节「状态文件都在哪」;**skill 目录零写入**。
 
 ### 单站:不需要任何配置文件
 
@@ -181,7 +173,8 @@ python3 scripts/run.py --site <id>   # 只跑其中一个
 `--verify-only`:只跑两道漂移守卫(清单 vs 脚本、config.example vs 默认值),
 不联网,有漂移以 1 退出 —— CI 用的入口。
 
-耗时:默认单线程 1 秒间隔,约 `2 × sitemap 条目数` 个请求。271 页的站约 7 分钟;
+耗时:默认单线程 1 秒间隔,约 `2 × sitemap 条目数` 个请求。271 页的站约 7 分钟
+(**跑之前告诉用户大概要等多久**);
 想快用 `--page-sample 100` 抽样——结构问题是模板级的,抽样和全量看到的是同一批。
 
 ## 读报告
