@@ -2,8 +2,9 @@
 """checker — a manually run check script. Usage and verdict semantics live in SKILL.md at the skill root.
 
 Item definitions live in references/checklist/checklist.md (**the single source of truth**);
-this script implements its machine items C1-C20, C23-C26; C21/C22 are human-review items,
-listed in the report but never judged.
+this script implements its machine items C1-C20, C23-C30; C21 is a human-review item,
+listed in the report but never judged; C22's target-URL status part is machine-run, the
+reciprocity judgment stays human.
 The two are aligned by verify_checklist_sync() on every start — check logic can't be
 auto-generated (each one is hand-written), but "which items exist, what priority, which
 section" must match; on mismatch it shouts on stdout.
@@ -130,13 +131,13 @@ class Fetcher:
             self.local.s = s
         return s
 
-    def _fetch(self, url, redirects, headers=None, attempt=0):
+    def _fetch(self, url, redirects, headers=None, attempt=0, method="GET"):
         with self._lock:
             extra = self._extra
         time.sleep(self.sleep + extra)
         try:
-            r = self._session().get(url, timeout=CFG.REQUEST_TIMEOUT,
-                                    allow_redirects=redirects, headers=headers)
+            r = self._session().request(method, url, timeout=CFG.REQUEST_TIMEOUT,
+                                        allow_redirects=redirects, headers=headers)
             out = {"status": r.status_code, "text": r.text, "headers": dict(r.headers),
                    "final_url": r.url, "hops": len(r.history), "err": None}
         except Exception as e:
@@ -161,16 +162,18 @@ class Fetcher:
                 except (TypeError, ValueError):
                     wait = CFG.THROTTLE_BACKOFF * (2 ** attempt)
                 time.sleep(min(wait, 30))
-                return self._fetch(url, redirects, headers, attempt + 1)
+                return self._fetch(url, redirects, headers, attempt + 1, method)
         return out
 
-    def get(self, url, redirects=True, force=False, headers=None):
+    def get(self, url, redirects=True, force=False, headers=None, method="GET"):
         """Returns dict(status, text, headers, final_url, hops, err); cached.
         force=True (C10's double fetch) bypasses the cache and does not write back —
-        that call's whole point is "fetch again and see if it changed"."""
+        that call's whole point is "fetch again and see if it changed".
+        method="HEAD" (C18's image weight probe) asks only for headers — never download
+        megabytes of image bytes just to read one Content-Length."""
         if force:
-            return self._fetch(url, redirects, headers)
-        key = (url, redirects, tuple(sorted((headers or {}).items())))
+            return self._fetch(url, redirects, headers, method=method)
+        key = (url, redirects, tuple(sorted((headers or {}).items())), method)
         with self._lock:
             if key in self.cache:
                 return self.cache[key]
@@ -179,7 +182,7 @@ class Fetcher:
             with self._lock:
                 if key in self.cache:            # someone finished it while we waited for the lock
                     return self.cache[key]
-            out = self._fetch(url, redirects, headers)
+            out = self._fetch(url, redirects, headers, method=method)
             with self._lock:
                 self.cache[key] = out
             return out
@@ -200,6 +203,14 @@ def strip_text(html):
                "", html, flags=re.S | re.I)
     t = re.sub(r"<[^>]+>", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+def word_count(text):
+    """Words for the C13 thin-content floor. Latin/digit runs count as one word each; CJK
+    has no spaces to tokenize on, so one character = one word (the same convention word
+    processors use). Mixed pages just sum the two."""
+    latin = len(re.findall(r"[A-Za-z0-9]+", text))
+    cjk = len(re.findall(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7a3]", text))
+    return latin + cjk
 
 def metas(html):
     """meta name/property → content (lower-cased keys; first wins on duplicates)."""
@@ -476,26 +487,44 @@ def check_site(site, f, args):
     # — measured on the pilot site it reported 138 orphans, root cause being C26 locking
     # the crawler into the /cn cluster; adding internal links cures nothing. Dead links
     # are the opposite: only what was **seen** gets reported.
-    crawled, _disc, capped, dead_links, crawl_thr = crawl_links(f, origin, args.max_pages)
+    crawled, _disc, capped, dead_links, crawl_thr, ext_links = crawl_links(f, origin, args.max_pages)
     smset = {norm_url(map_host(u, site, local, origin)) for u in sitemap_urls} if sitemap_urls else set()
     outside = [d for d in dead_links if norm_url(d[0]) not in smset]
     dead_ev = bad_link_evidence(outside)
+    # External sample: conclusive-only. Third-party sites 429/403/timeout the checker
+    # routinely (bot walls, geo blocks) and none of that says the link is broken for a
+    # user — only a hard 404/410 may count red; the rest is listed, never judged.
+    ext_sample = list(ext_links.items())[:CFG.EXTERNAL_LINK_SAMPLE]
+    ext_dead, ext_unver = [], []
+    for (u, src), rr in zip(ext_sample, f.map(lambda kv: f.get(kv[0]), ext_sample)):
+        if rr["status"] in (404, 410):
+            ext_dead.append(f"external {u} → {rr['status']} (source {src})")
+        elif rr["status"] != 200:
+            ext_unver.append(u)
+    if ext_unver:
+        ext_dead_note = [f"{len(ext_unver)} external links unverifiable (non-200 but inconclusive "
+                         f"— bot wall / geo block / transient; verify in a browser): "
+                         + "; ".join(ext_unver[:3])]
+    else:
+        ext_dead_note = []
     partial = []
     if crawl_thr:
         partial.append(f"throttled ({crawl_thr} crawled pages throttled, their outlinks unparsed; "
                        f"rerun with fewer --workers or a larger --sleep)")
     if capped:
         partial.append(f"crawl-capped (crawled {crawled} pages, hit the {args.max_pages} cap)")
-    if outside:
+    if outside or ext_dead:
         # Found dead links are conclusive; incomplete coverage doesn't weaken that —
         # there may just be more not yet crawled
-        R.set("C6", FAIL, dead_ev + partial)
+        R.set("C6", FAIL, dead_ev + ext_dead[:5] + ext_dead_note + partial)
     elif partial:
         R.set("C6", NA, partial + ["coverage incomplete, not enough to declare internal outlinks clean"])
     else:
         n = len(dead_links) - len(outside)
-        R.set("C6", PASS, f"crawled {crawled} pages, internal outlinks outside the sitemap free of 4xx/5xx"
-                          + (f" (plus {n} bad links whose targets are in the sitemap — C2's business)" if n else ""))
+        R.set("C6", PASS, [f"crawled {crawled} pages, internal outlinks outside the sitemap free of 4xx/5xx"
+                           + (f" (plus {n} bad links whose targets are in the sitemap — C2's business)" if n else "")]
+                          + ([f"{len(ext_sample)} external links sampled, no conclusive 404/410"] if ext_sample else [])
+                          + ext_dead_note)
 
     # ---------- C7 llms.txt ----------
     rr = f.get(origin + "/llms.txt")
@@ -505,6 +534,52 @@ def check_site(site, f, args):
         R.set("C7", FAIL, "exists but not valid markdown, or near-empty")
     else:
         R.set("C7", PASS, f"{len(rr['text'])} chars; key-page coverage and summaries → human review (against T2)")
+
+    # ---------- C28 security response headers (site-level: these are set once at the
+    # server/CDN layer, so the root's headers speak for the site) ----------
+    if not origin.lower().startswith("https://"):
+        R.set("C28", NA, "need-https (security headers are judged on the https origin only)")
+    elif throttled(root):
+        R.set("C28", NA, "throttled (root fetch got 429/503)")
+    else:
+        hdrs = {k.lower(): v for k, v in root["headers"].items()}
+        csp = hdrs.get("content-security-policy", "")
+        missing = []
+        if "strict-transport-security" not in hdrs:
+            missing.append("Strict-Transport-Security")
+        if not csp:
+            missing.append("Content-Security-Policy (roll out via Content-Security-Policy-Report-Only first)")
+        if "nosniff" not in hdrs.get("x-content-type-options", "").lower():
+            missing.append("X-Content-Type-Options: nosniff")
+        if "x-frame-options" not in hdrs and "frame-ancestors" not in csp.lower():
+            missing.append("X-Frame-Options (or CSP frame-ancestors)")
+        if "referrer-policy" not in hdrs:
+            missing.append("Referrer-Policy")
+        R.set("C28", FAIL if missing else PASS,
+              [f"missing: {m}" for m in missing] or
+              "all five security headers present (one server/CDN config covers the whole site)")
+
+    # ---------- C29 URL hygiene (sitemap URL list, zero extra fetches) ----------
+    if not sitemap_urls:
+        R.set("C29", NA, "no sitemap URL list to scan")
+    else:
+        upper = [u for u in sitemap_urls if re.search(r"[A-Z]", urlparse(u).path)]
+        unders = [u for u in sitemap_urls if "_" in urlparse(u).path]
+        query = [u for u in sitemap_urls if urlparse(u).query]
+        nonascii = [u for u in sitemap_urls if any(ord(c) > 127 for c in u)]
+        probs = []
+        if upper:
+            probs.append(f"{len(upper)} URLs with uppercase in the path (URLs are case-sensitive — "
+                         f"duplicate-content risk) e.g. {upper[0]}")
+        if unders:
+            probs.append(f"{len(unders)} URLs with underscores (use hyphens as word separators) e.g. {unders[0]}")
+        if query:
+            probs.append(f"{len(query)} URLs with query params (canonical addresses should be parameter-free) e.g. {query[0]}")
+        if nonascii:
+            probs.append(f"{len(nonascii)} URLs with raw non-ASCII characters (invalid per URL spec — "
+                         f"percent-encode them; existing URLs need a 301 plan, don't rename casually) e.g. {nonascii[0]}")
+        R.set("C29", FAIL if probs else PASS,
+              probs or f"{len(sitemap_urls)} sitemap URLs all lowercase, hyphenated, ASCII, parameter-free")
 
     # ---------- C26 no auto language redirects (site-level, sampled) ----------
     probes = [{"Accept-Language": lang} for lang in CFG.LANG_REDIRECT_PROBES]
@@ -599,6 +674,27 @@ def check_site(site, f, args):
                  if re.search(rf"\b{tok}\b", xr)][:1]
         st.append((p["url"], FAIL if hits else PASS, hits))
     agg_pages(R, "C23", st)
+
+    # C27 valid head: an invalid element (img/iframe/div…) makes the parser deem the head
+    # closed early — every meta/link/canonical after it lands in the body and is ignored.
+    # One misplaced tag silently voids C8/C16/C19/C22/C23's tags on that page, which is
+    # why this is P0 while most per-page items are not.
+    st = []
+    for p in ok_pages:
+        m = re.search(r"<head[^>]*>(.*?)</head>", p["html"], flags=re.S | re.I)
+        if not m:
+            st.append((p["url"], NA, "no explicit head element found")); continue
+        inner = re.sub(r"<!--.*?-->", "", m.group(1), flags=re.S)
+        # script/style/noscript/template CONTENT may legally contain markup-looking text
+        # (JSON, CSS hacks, inline SVG in a template) — strip whole blocks before scanning
+        inner = re.sub(r"<(script|style|noscript|template)\b.*?</\1\s*>", "",
+                       inner, flags=re.S | re.I)
+        bad = collections.Counter(t.lower() for t in re.findall(r"<([a-zA-Z][a-zA-Z0-9-]*)", inner)
+                                  if t.lower() not in CFG.HEAD_VALID_TAGS)
+        st.append((p["url"], FAIL if bad else PASS,
+                   [f"invalid element in head: <{t}> ×{n} (head parsing ends there; "
+                    f"every tag after it is ignored)" for t, n in bad.most_common(3)]))
+    agg_pages(R, "C27", st)
 
     # C11 title/description
     st, titles, descs = [], {}, {}
@@ -698,11 +794,18 @@ def check_site(site, f, args):
               for t, us in sorted(rejected_hit.items())]
         R.set("C12", FAIL, prev[1] + ev)
 
-    # C13 empty-shell 200
-    st = [(p["url"],
-           FAIL if len(p["text"]) < CFG.MIN_CONTENT_CHARS else PASS,
-           f"{len(p['text'])} chars" + ("" if len(p["text"]) >= CFG.MIN_CONTENT_CHARS else " < threshold"))
-          for p in ok_pages]
+    # C13 empty-shell 200 + thin content (char floor catches empty shells, word floor
+    # catches "syntactically full, semantically empty" — 200 latin words ≈ 1200 chars,
+    # so the char threshold alone can't see it)
+    st = []
+    for p in ok_pages:
+        chars, words = len(p["text"]), word_count(p["text"])
+        probs = []
+        if chars < CFG.MIN_CONTENT_CHARS:
+            probs.append(f"{chars} chars < {CFG.MIN_CONTENT_CHARS} (likely empty shell)")
+        elif words < CFG.MIN_CONTENT_WORDS:
+            probs.append(f"{words} words < {CFG.MIN_CONTENT_WORDS} (thin content; add substance or noindex)")
+        st.append((p["url"], FAIL if probs else PASS, probs or f"{chars} chars / {words} words"))
     agg_pages(R, "C13", st)
     prev = R.rows["C13"]
     R.set("C13", prev[0], prev[1] + ["retired sampling not wired (need-topic-queue)"])
@@ -776,6 +879,38 @@ def check_site(site, f, args):
         st.append((p["url"], FAIL if probs else PASS,
                    probs or f"{len(imgs)} imgs have dimensions+alt"))
     agg_pages(R, "C18", st)
+    # Weight budget (site-wide sample, HEAD only): oversized images are LCP's main lever
+    # (C4 measures the outcome in field data; this names the culprit files). Judged via
+    # Content-Length — no header = unverifiable, listed but never failed on.
+    img_srcs = []
+    for p in ok_pages:
+        for tag in re.findall(r"<img\s[^>]*>", p["html"], flags=re.I):
+            m = re.search(r'\bsrc\s*=\s*["\']([^"\']+)["\']', tag, flags=re.I)
+            if not m or m.group(1).startswith("data:"):
+                continue
+            u = urljoin(p["fetch"]["final_url"], m.group(1))
+            if u.startswith(("http://", "https://")) and u not in img_srcs:
+                img_srcs.append(u)
+    sample = img_srcs[:CFG.IMG_WEIGHT_SAMPLE]
+    heavy, no_len = [], 0
+    for u, rr in zip(sample, f.map(lambda q: f.get(q, method="HEAD"), sample)):
+        cl = rr["headers"].get("Content-Length") or rr["headers"].get("content-length")
+        if rr["status"] != 200 or not cl or not cl.isdigit():
+            no_len += 1
+            continue
+        kb = int(cl) // 1024
+        if kb > CFG.IMG_MAX_KB:
+            heavy.append(f"{u} ({kb}KB > {CFG.IMG_MAX_KB}KB)")
+    if heavy:
+        prev = R.rows["C18"]
+        R.set("C18", FAIL, prev[1] + [f"{len(heavy)}/{len(sample)} sampled imgs over the weight budget "
+                                      f"(compress / WebP-AVIF / responsive srcset)"] + heavy[:5])
+    elif sample:
+        prev = R.rows["C18"]
+        note = f"{len(sample) - no_len}/{len(sample)} sampled imgs verified within {CFG.IMG_MAX_KB}KB"
+        if no_len:
+            note += f" ({no_len} unverifiable: no Content-Length or non-200 on HEAD)"
+        R.set("C18", prev[0], prev[1] + [note])
 
     # C19 full OG set
     need = ["og:title", "og:description", "og:type", "og:url", "og:image"]
@@ -827,9 +962,74 @@ def check_site(site, f, args):
                    if hits else ""))
     agg_pages(R, "C25", st)
 
-    # C21/C22 human review
+    # C30 link hygiene: anchors need a machine-readable label (text / img alt / aria-label);
+    # external target=_blank without rel=noopener leaves window.opener open (modern browsers
+    # imply noopener, the explicit rel covers the older ones — defense in depth, hence P2)
+    a_re = re.compile(r"<a\s([^>]*)>(.*?)</a\s*>", flags=re.S | re.I)
+    st = []
+    for p in ok_pages:
+        page_host = urlparse(p["fetch"]["final_url"]).netloc
+        no_text, unsafe = [], []
+        for attrs, inner in a_re.findall(p["html"]):
+            hm = re.search(r'\bhref\s*=\s*["\']([^"\']+)["\']', attrs, flags=re.I)
+            if not hm or hm.group(1).startswith(("javascript:", "mailto:", "tel:", "#")):
+                continue
+            href = hm.group(1)
+            if not strip_text(inner):
+                has_alt = re.search(r'<img\s[^>]*\balt\s*=\s*["\'][^"\']+["\']', inner, flags=re.I)
+                has_aria = re.search(r'\baria-label\s*=\s*["\'][^"\']+["\']', attrs + " " + inner, flags=re.I)
+                if not has_alt and not has_aria:
+                    no_text.append(href)
+            if re.search(r'\btarget\s*=\s*["\']?_blank', attrs, flags=re.I):
+                tgt = urlparse(urljoin(p["fetch"]["final_url"], href))
+                rel = re.search(r'\brel\s*=\s*["\']([^"\']*)["\']', attrs, flags=re.I)
+                if tgt.netloc and tgt.netloc != page_host and not (
+                        rel and re.search(r"noopener|noreferrer", rel.group(1), flags=re.I)):
+                    unsafe.append(href)
+        probs = []
+        if no_text:
+            probs.append(f"{len(no_text)} links with no anchor text / img alt / aria-label, e.g. {no_text[0]}")
+        if unsafe:
+            probs.append(f"{len(unsafe)} external target=_blank links without rel=noopener, e.g. {unsafe[0]}")
+        st.append((p["url"], FAIL if probs else PASS, probs))
+    agg_pages(R, "C30", st)
+
+    # C21 human review; C22 machine part (target status) + human reciprocity
     R.set("C21", HUMAN, "before launch, walk C21's YMYL trust-block checklist (see references/checklist/references/C21.md) (trigger: ymyl=true)")
-    R.set("C22", HUMAN, "manually verify each language pair points both ways + x-default (trigger: site has a multi-language config)")
+    # C22: the machine can verify what the annotations point at; whether the pairs close
+    # (A lists B and B lists A, plus x-default) needs the language-config list — human.
+    targets = []
+    for p in ok_pages:
+        # attribute order is free in HTML — match per <link> tag, then read each attribute
+        for tag in re.findall(r"<link\s[^>]*>", p["html"], flags=re.I):
+            if not re.search(r'\brel\s*=\s*["\']alternate["\']', tag, flags=re.I):
+                continue
+            if not re.search(r"\bhreflang\s*=", tag, flags=re.I):
+                continue
+            hm = re.search(r'\bhref\s*=\s*["\']([^"\']+)["\']', tag, flags=re.I)
+            if hm:
+                u = map_host(urljoin(p["fetch"]["final_url"], hm.group(1)), site, local, origin)
+                if u not in targets:
+                    targets.append(u)
+    if not targets:
+        R.set("C22", HUMAN, "no hreflang annotations on sampled pages; if the site is multi-language, "
+                            "emit the groups (then reciprocity closure + x-default → human review)")
+    else:
+        sample = targets[:CFG.HREFLANG_TARGET_SAMPLE]
+        probs = []
+        for u, rr in zip(sample, f.map(lambda q: f.get(q, redirects=False), sample)):
+            if throttled(rr):
+                continue
+            if rr["status"] and 300 <= rr["status"] < 400:
+                probs.append(f"{u} → {rr['status']} redirect (hreflang must point at the final 200 URL; "
+                             f"engines drop redirecting entries)")
+            elif rr["status"] != 200:
+                probs.append(f"{u} → {rr['status'] or rr['err']} (engines ignore non-200 hreflang entries)")
+        if probs:
+            R.set("C22", FAIL, probs[:5])
+        else:
+            R.set("C22", HUMAN, f"{len(sample)} hreflang target URLs all return 200 direct; "
+                                f"reciprocity closure + x-default → human review")
 
     R.throttled_total = f.throttled
     return R, mode, len(ok_pages), len(pages)
@@ -983,28 +1183,32 @@ CHECKS = [
         ("C26", "P0", "no Accept-Language redirects: every language version has its own fixed URL, no auto-jump"),
         ("C4", "P1", "Core Web Vitals pass: LCP<2.5s / INP<200ms / CLS<0.1"),
         ("C5", "P1", "IndexNow key file reachable at the site root"),
-        ("C6", "P1", "internal outlinks free of 4xx/5xx: links on pages don't point at broken pages"),
+        ("C6", "P1", "outlinks free of 4xx/5xx: links on pages don't point at broken pages (external sampled, conclusive-only)"),
         ("C7", "P2", "llms.txt exists: a site directory for AI engines at the root"),
+        ("C28", "P2", "security response headers: HSTS + CSP + nosniff + frame protection + Referrer-Policy"),
+        ("C29", "P2", "URL hygiene: sitemap URLs lowercase, hyphen-separated, no raw non-ASCII, no query params"),
     ]),
     ("2. Per indexed page", [
         ("C8", "P0", "self-referencing canonical: every page names its own canonical URL, HTML and header agree"),
         ("C9", "P0", "full body served server-side: readable without executing JS (no CSR shell)"),
         ("C10", "P0", "cached HTML is a public non-personalized version: nothing user-specific in it"),
         ("C23", "P0", "indexed pages carry no noindex: neither meta robots nor X-Robots-Tag blocks"),
+        ("C27", "P0", "valid head: only head-legal elements inside head (an invalid element ends head parsing early)"),
         ("C11", "P1", "title / description unique per page and within limits (<=60 / <=150)"),
         ("C12", "P1", "JSON-LD: blocks parse, required fields present, no rejected types"),
-        ("C13", "P1", "no soft 404s: never a 200 serving an empty or error page (retire via 301/410)"),
+        ("C13", "P1", "no soft 404s: never a 200 serving an empty or error page (retire via 301/410)"),   # verdict: char + word floors
         ("C14", "P1", "no anti-flicker script hiding the whole page (crawlers may get a blank)"),
         ("C16", "P1", "snippet controls: max-snippet:-1 + max-image-preview:large"),
         ("C24", "P1", "viewport meta includes width=device-width"),
         ("C17", "P2", "heading hierarchy: exactly one h1, h2->h3 with no skipped levels"),
-        ("C18", "P2", "every img has explicit width/height + alt"),
+        ("C18", "P2", "every img has explicit width/height + alt; sampled image files within the weight budget"),
         ("C19", "P2", "full Open Graph set + twitter:card: social preview cards complete and correct"),
         ("C20", "P2", "redirect hops <=1: no chained redirects"),
         ("C15", "P2", "render cost not per-request: SSR needs CDN caching (s-maxage + SWR), SSG exempt"),
         ("C25", "P2", "no mixed content: no http:// subresources on HTTPS pages"),
+        ("C30", "P2", "link hygiene: every anchor has text (or img alt / aria-label); external target=_blank carries rel=noopener"),
     ]),
-    ("3. Conditional (human review; flag / site-config triggered)", [
+    ("3. Conditional (flag / site-config triggered)", [
         ("C21", "P0", "YMYL trust block: author, review attribution, authoritative citations"),
         ("C22", "P1", "hreflang reciprocal pairs + x-default"),
     ]),
@@ -1135,12 +1339,14 @@ def bad_link_evidence(bad):
 
 def crawl_links(f, origin, max_pages):
     """BFS over internal links; returns (pages crawled, discovered in-site URL set (norm),
-    hit-the-cap flag, dead links [(url, status, source page)]).
+    hit-the-cap flag, dead links [(url, status, source page)], throttled count,
+    external link targets {url: source page}).
 
     Dead links and orphans come from this same crawl: orphans ask "does this edge exist in
-    the graph", dead links ask "does this edge lead anywhere". Only internal links are
-    covered — external outlinks would hit third-party sites every run, slow and easily
-    false-flagged by 429/403; they belong to generation-side self-checks + human review (C6.md).
+    the graph", dead links ask "does this edge lead anywhere". Internal links are judged
+    in full; **external targets are only collected here** (capped) — probing them is C6's
+    sampled, conclusive-only pass: third-party sites 429/403/timeout the checker routinely,
+    so only a hard 404/410 may count red (see C6.md, narrowed 2026-08-28).
 
     Level-wise concurrency: pages within one level are independent (new discoveries only
     enter **the next level**), so a whole level can be fetched concurrently and merged
@@ -1150,7 +1356,7 @@ def crawl_links(f, origin, max_pages):
     o = urlparse(origin)
     start = norm_url(origin + "/")
     frontier, seen_fetch, discovered = [start], set(), {start}
-    parent, dead, thr = {}, [], 0
+    parent, dead, thr, external = {}, [], 0, {}
     while frontier and len(seen_fetch) < max_pages:
         level = frontier[:max_pages - len(seen_fetch)]   # same truncation point as the sequential version
         frontier = frontier[len(level):]
@@ -1167,7 +1373,13 @@ def crawl_links(f, origin, max_pages):
             for href in re.findall(r'<a\s[^>]*href=["\']([^"\'#]+)["\']', r["text"], flags=re.I):
                 absu = urljoin(r["final_url"], href)
                 p = urlparse(absu)
-                if p.netloc != o.netloc or p.scheme not in ("http", "https"):
+                if p.scheme not in ("http", "https"):
+                    continue
+                if p.netloc != o.netloc:
+                    # collect only — cap well above the probe sample so dedup still has
+                    # variety to draw from, but a footer link farm can't balloon memory
+                    if len(external) < CFG.EXTERNAL_LINK_SAMPLE * 10:
+                        external.setdefault(absu.split("#")[0], u)
                     continue
                 if re.search(r"\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|mp4|css|js)$", p.path, flags=re.I):
                     continue
@@ -1176,7 +1388,7 @@ def crawl_links(f, origin, max_pages):
                     discovered.add(n)
                     parent[n] = u
                     frontier.append(n)
-    return len(seen_fetch), discovered, bool(frontier), dead, thr
+    return len(seen_fetch), discovered, bool(frontier), dead, thr, external
 
 # ── the safe exit for markdown tables ───────────────────────────
 # Tables are the most fragile structure in markdown: one bare | splits an extra column,
@@ -1293,7 +1505,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
         lines.append("- ⚠️ sample fetches failed (not throttling): " + ";".join(R.fetch_fails[:6]) +
                      (f" …{len(R.fetch_fails)} total" if len(R.fetch_fails) > 6 else ""))
         lines.append("")
-    counts = {"fail_p0": 0, "fail": 0, "pass": 0, "na": 0}
+    counts = {"fail_p0": 0, "fail": 0, "pass": 0, "na": 0, "human": 0}
     details = []            # (cid, name, full evidence as lines) — the evidence zone outside the table
     for sec, items in CHECKS:
         lines += [f"## {sec}", "",
@@ -1305,6 +1517,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
                 if prio == "P0": counts["fail_p0"] += 1
             elif status == PASS: counts["pass"] += 1
             elif status == NA: counts["na"] += 1
+            elif status == HUMAN: counts["human"] += 1
             # Strip the origin prefix: the report header already names the target site;
             # repeating it on every line is pure noise.
             # (The database still stores absolute URLs — the machine-read copy is untouched.)
@@ -1354,7 +1567,7 @@ def render_report(site, R, mode, ok_n, total_n, args):
             lines += parts or ["(none)"]
             lines += ["```", ""]
     lines.insert(5, f"**Verdict: 🔴 {counts['fail']} (P0: {counts['fail_p0']}) • "
-                    f"✅ {counts['pass']} • ⚪ N.A. {counts['na']} • 👤 human review 2**")
+                    f"✅ {counts['pass']} • ⚪ N.A. {counts['na']} • 👤 human review {counts['human']}**")
     if details:
         # Text-level pointer, not just the anchor: some viewers can't make in-page
         # anchors jump — the words alone must tell the reader where the full

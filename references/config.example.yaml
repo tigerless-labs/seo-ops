@@ -50,6 +50,9 @@ LANG_REDIRECT_SAMPLE_SIZE: 5
 # C6: crawl cap (a runaway guard); hitting it = incomplete coverage, recorded N.A.
 CRAWL_MAX_PAGES: 5000
 
+# C6: distinct external link targets probed per run (only a conclusive 404/410 counts red)
+EXTERNAL_LINK_SAMPLE: 30
+
 # C9: no-JS text / rendered text lower bound (enabled once headless lands)
 SSR_TEXT_RATIO: 0.9
 
@@ -67,6 +70,18 @@ DESC_MAX_CHARS: 150
 
 # C13: body text lower bound (thin content)
 MIN_CONTENT_CHARS: 400
+
+# C13: body word-count lower bound (thin content; CJK counts one char as one word)
+MIN_CONTENT_WORDS: 200
+
+# C18: per-file image weight budget in KB (sampled via HEAD Content-Length)
+IMG_MAX_KB: 100
+
+# C18: distinct image URLs probed per run
+IMG_WEIGHT_SAMPLE: 20
+
+# C22: distinct hreflang target URLs probed per run
+HREFLANG_TARGET_SAMPLE: 30
 
 # C20: retired URLs sampled
 RETIRED_SAMPLE_SIZE: 10

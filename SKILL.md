@@ -6,13 +6,13 @@ compatibility: Requires Python 3.9+, requests, PyYAML, and network access to the
 
 # seo-ops · SEO foundation engineering
 
-Review a site's templates and output against the **C set** (26 structural checks), or run the checker to produce an acceptance report.
+Review a site's templates and output against the **C set** (30 structural checks), or run the checker to produce an acceptance report.
 
 ## How to work
 
 When this skill triggers, **spend two or three sentences telling the user what they've got**, then start:
 
-> This is a set of 26 SEO/GEO structural checks (the C set). They test whether crawlers can fetch, read, index, and cite a site
+> This is a set of 30 SEO/GEO structural checks (the C set). They test whether crawlers can fetch, read, index, and cite a site
 > — binary structural questions, not ranking quality.
 
 Then ask which of the two paths they want — **as selectable options if your environment has an
@@ -75,7 +75,7 @@ third-party scripts); if a crawler can see it, it's covered. The boundary is "ma
 
 | Path | What it is |
 |---|---|
-| [references/checklist/checklist.md](references/checklist/checklist.md) | The **C set** index: 26 checks, split into site-level / per indexed page / conditional |
+| [references/checklist/checklist.md](references/checklist/checklist.md) | The **C set** index: 30 checks, split into site-level / per indexed page / conditional |
 | `references/checklist/references/C<N>.md` | Each C check's canonical doc: `## Introduction` (why) + `## Implementation guidance` (how to fix) + authoritative references |
 | `references/content/` | The **T set**: for tracing a red C back to "who owes the input"; outside this skill's duties |
 | `scripts/run.py` · `scripts/config.py` | Check logic / check parameters |
@@ -139,7 +139,7 @@ Each run writes two outputs to `~/Documents/seo-ops/out/` (`--state-dir` / `--ou
 
 | Output | For | What it is |
 |---|---|---|
-| `report-<site>-<date>.md` | humans | mirrors the checklist one-to-one; the same 26 rows every run |
+| `report-<site>-<date>.md` | humans | mirrors the checklist one-to-one; the same 30 rows every run |
 | `checks.db` | machines | SQLite, `checks(site, url, rule_id, status, evidence, checked_at)`, primary key `(site,url,rule_id)`; accumulates across runs for diffing |
 
 | Result | Meaning |

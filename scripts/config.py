@@ -236,8 +236,13 @@ def refresh_secrets():
         (p.strip() for p in os.environ.get("INDEXNOW_KEYS", "").split(",")) if ":" in pair
     )
 
-# ── C6 internal outlinks (link-graph crawl) ───────────
+# ── C6 outlinks (link-graph crawl) ────────────────────
 CRAWL_MAX_PAGES = 5000        # crawl cap (a runaway guard); hitting it = incomplete coverage, recorded N.A.
+# External outlinks: sampled, and **only a conclusive 404/410 counts red** — third-party
+# sites 429/403/timeout the checker routinely (bot walls, geo blocks), and none of those
+# says the link is broken for a user. Everything inconclusive is listed as unverifiable,
+# never fail (same discipline as throttling: a fetch problem is not a site problem).
+EXTERNAL_LINK_SAMPLE = 30     # distinct external link targets probed per run
 
 # ── C9 server-side rendering (v1 heuristic; ratio verdict awaits headless) ──
 SSR_TEXT_RATIO = 0.90         # target verdict: no-JS text / rendered text lower bound (enabled once headless lands)
@@ -315,6 +320,10 @@ LD_REJECTED_TYPES = {
 
 # ── C13 soft 404 / empty-shell 200 ───────────────────
 MIN_CONTENT_CHARS = 400       # tag-stripped body text below this = likely an empty shell
+# Thin-content floor in words, not chars: 200 latin words ≈ 1200 chars, so the char
+# threshold alone misses "syntactically full, semantically empty" pages. CJK counts one
+# character as one word (no spaces to tokenize on).
+MIN_CONTENT_WORDS = 200
 RETIRED_SAMPLE_SIZE = 10      # retired entries sampled for status codes
 
 # ── C14 body-hide third-party scripts (hand-maintained list, append new tools here) ──
@@ -323,6 +332,16 @@ BODY_HIDE_PATTERNS = [
     r"body\s*\{[^}]*opacity\s*:\s*0",    # generic anti-flicker
     r"async-hide",                       # Google Optimize-family anti-flicker
 ]
+
+# ── C18 image weight (LCP's main lever; sampled, judged via HEAD Content-Length) ──
+IMG_MAX_KB = 100              # per-file weight budget in KB (industry convention, not an official constant)
+IMG_WEIGHT_SAMPLE = 20        # distinct image URLs probed per run (HEAD only; no Content-Length = unverifiable, skipped)
+
+# ── C22 hreflang target status (machine part; reciprocity stays human) ──
+HREFLANG_TARGET_SAMPLE = 30   # distinct hreflang target URLs probed per run
+
+# ── C27 head validity (spec constant, not tunable: the WHATWG head content model) ──
+HEAD_VALID_TAGS = {"title", "meta", "link", "script", "style", "base", "noscript", "template"}
 
 # ── C19 OG ───────────────────────────────────────────
 OG_IMAGE_WIDTH = 1200
@@ -373,12 +392,17 @@ TUNABLE = {
     "SITEMAP_LASTMOD_CLUSTER_RATIO":       "C2: single-day lastmod cluster over this ratio on the run date = suspected build timestamp",
     "LANG_REDIRECT_SAMPLE_SIZE":           "C26: pages sampled for auto language redirects",
     "CRAWL_MAX_PAGES":                     "C6: crawl cap (a runaway guard); hitting it = incomplete coverage, recorded N.A.",
+    "EXTERNAL_LINK_SAMPLE":                "C6: distinct external link targets probed per run (only a conclusive 404/410 counts red)",
     "SSR_TEXT_RATIO":                      "C9: no-JS text / rendered text lower bound (enabled once headless lands)",
     "SSR_MIN_TEXT_CHARS":                  "C9: no-JS body text below this = likely CSR shell",
     "CACHE_DIFF_SAMPLE_SIZE":              "C10: pages sampled for the same-URL double-fetch diff",
     "TITLE_MAX_CHARS":                     "C11: title length cap",
     "DESC_MAX_CHARS":                      "C11: description length cap",
     "MIN_CONTENT_CHARS":                   "C13: body text lower bound (thin content)",
+    "MIN_CONTENT_WORDS":                   "C13: body word-count lower bound (thin content; CJK counts one char as one word)",
+    "IMG_MAX_KB":                          "C18: per-file image weight budget in KB (sampled via HEAD Content-Length)",
+    "IMG_WEIGHT_SAMPLE":                   "C18: distinct image URLs probed per run",
+    "HREFLANG_TARGET_SAMPLE":              "C22: distinct hreflang target URLs probed per run",
     "RETIRED_SAMPLE_SIZE":                 "C20: retired URLs sampled",
     "OG_IMAGE_WIDTH":                      "C19: recommended og:image width",
     "OG_IMAGE_HEIGHT":                     "C19: recommended og:image height",
