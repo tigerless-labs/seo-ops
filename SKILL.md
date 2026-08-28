@@ -10,18 +10,17 @@ Review a site's templates and output against the **C set** (30 structural checks
 
 ## How to work
 
-When this skill triggers, **spend two or three sentences telling the user what they've got**, then start:
+When this skill triggers, introduce it in **one sentence** — "30 structural checks (the C set): can crawlers
+fetch, read, index, and cite this site" — then immediately ask **one question** (as selectable options if your
+environment has an option/question UI):
 
-> This is a set of 30 SEO/GEO structural checks (the C set). They test whether crawlers can fetch, read, index, and cite a site
-> — binary structural questions, not ranking quality.
+> **What should I check?**
+> 1. **A URL** — live domain or local deployment (`http://localhost:<port>`), both fine; produces a report
+> 2. **The code** — review templates/pages in this repo against the checklist, no script
 
-Then ask which of the two paths they want — **as selectable options if your environment has an
-option/question UI; otherwise as this list**:
-
-1. **Run the checker on a site** — a live domain or a local deployment (`http://localhost:<port>`), both work; produces a report
-2. **Review code/templates** — no script; go through the checks one by one
-
-**Confirm intent before starting**, because "check the live site" and "check the code" are two different jobs — guessing wrong wastes a full run:
+That one answer decides the path; don't ask anything else before starting — **no config is needed**, the checker
+runs with defaults on a bare `--target`. Never bring configuration up on your own; it only becomes relevant if
+the user asks for the extras (CrUX field data, IndexNow, multi-site roster — see "**Configuration**").
 
 | The user gave | Path | Section to follow |
 |---|---|---|
@@ -30,7 +29,6 @@ option/question UI; otherwise as this list**:
 
 Once intent is confirmed, **do not keep asking for permission**. Everything else:
 the user asks why a check exists / how to fix it → "**After the report**";
-whether to create a config, and which one → "**Configuration**";
 dependencies won't install → "**Environment**".
 
 Both paths **treat [references/checklist/checklist.md](references/checklist/checklist.md) as authoritative** —
@@ -89,8 +87,8 @@ Gaps in the numbering are normal (retired IDs are never recycled).
 
 ## Run the checker
 
-**Confirm the target is an origin → ask for all necessary config in one pass (see "Configuration") → run.**
-Get it running first; don't stall on optional items — none of the three config files is required.
+**Confirm the target is an origin → run.** No config file is required and none should be asked about —
+defaults cover everything; the optional files exist for users who come asking for more (see "Configuration").
 
 **One "site" = one origin** (scheme + host[:port], no path/query). Subdomains count as separate sites
 (`blog.` / `docs.` are each one); the apex domain and www don't count as two — they should 301 to a single canonical host,
