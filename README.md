@@ -58,3 +58,7 @@ Codex: in the terminal, `codex plugin marketplace upgrade seo-ops`, then `codex 
 ```
 
 The agent introduces the checks, confirms live site vs code review, runs, and explains the red items.
+
+---
+
+Built by [Tigerless Labs](https://github.com/tigerless-labs), the AI lab of [Tigerless](https://www.tigerless.com) — also home to [tigerless.ai](https://tigerless.ai).
