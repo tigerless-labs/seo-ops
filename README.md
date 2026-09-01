@@ -61,4 +61,4 @@ The agent introduces the checks, confirms live site vs code review, runs, and ex
 
 ---
 
-Built by [Tigerless Labs](https://github.com/tigerless-labs), the AI lab of [Tigerless](https://www.tigerless.com) — also home to [tigerless.ai](https://tigerless.ai).
+Built by [Tigerless Labs](https://github.com/tigerless-labs) — home of [tigerless.ai](https://tigerless.ai) and the AI lab of [Tigerless](https://www.tigerless.com).
