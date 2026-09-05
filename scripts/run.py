@@ -388,7 +388,7 @@ def check_site(site, f, args):
     R.thr_pages = len(thr_pages)
 
     # ---------- C1 robots.txt × ai-crawlers.yaml ----------
-    crawlers = yaml.safe_load((ROOT / "ai-crawlers.yaml").read_text())["crawlers"]
+    crawlers = yaml.safe_load((ROOT / "ai-crawlers.yaml").read_text(encoding="utf-8"))["crawlers"]
     all_uas = [ua for group in crawlers.values() for ua in group]
     r = f.get(origin + "/robots.txt")
     if r["status"] is None:
@@ -1229,7 +1229,7 @@ def verify_checklist_sync():
     if not md.exists():
         print("⚠️  checklist.md not found, skipping the sync check", flush=True); return []
     doc, sec = [], -1
-    for line in md.read_text().splitlines():
+    for line in md.read_text(encoding="utf-8").splitlines():
         if line.startswith("## ") and re.match(r"## [123]\. ", line):
             sec += 1
         m = re.match(r"\|\s*(C\d+)\s*\|\s*(P\d)\s*\|\s*([^|]*?)\s*\|", line)
@@ -1273,7 +1273,7 @@ def verify_config_example():
     if not f.exists():
         msg = "⚠️  drift: references/config.example.yaml missing, run `python3 scripts/config.py --write-example`"
         print(msg, flush=True); return [msg]
-    if f.read_text() == CFG.render_example():
+    if f.read_text(encoding="utf-8") == CFG.render_example():
         return []
     msg = ("⚠️  drift: references/config.example.yaml disagrees with config.py's defaults, "
            "run `python3 scripts/config.py --write-example` to regenerate")
@@ -1296,7 +1296,7 @@ def verify_wrapper_sync():
         msg = "⚠️  drift: skills/seo-ops/SKILL.md (plugin adapter) is missing"
         print(msg, flush=True); return [msg]
     def desc(f):
-        return next((ln for ln in f.read_text().splitlines()
+        return next((ln for ln in f.read_text(encoding="utf-8").splitlines()
                      if ln.startswith("description:")), "")
     if desc(root_md) == desc(wrap_md):
         return []
@@ -1641,7 +1641,7 @@ def load_sites(args):
         return [{"id": p.netloc.replace(":", "_"), "origin": t,
                  "production": t, "rendering": None, "samples": [{"url": "/"}],
                  "sitemap": None}]
-    data = yaml.safe_load(sites_file(args.state_dir).read_text())["sites"]
+    data = yaml.safe_load(sites_file(args.state_dir).read_text(encoding="utf-8"))["sites"]
     sites = []
     for s in data:
         if args.site and s["id"] != args.site: continue
@@ -1693,7 +1693,7 @@ def main():
             R, mode, ok_n, total_n = check_site(site, f, args)
             report = render_report(site, R, mode, ok_n, total_n, args)
             path = out_dir / f"report-{site['id']}-{NOW.strftime('%Y%m%d')}.md"
-            path.write_text(report)
+            path.write_text(report, encoding="utf-8")
             save_db(out_dir / "checks.db", site["id"], R)
             print(report.split("\n**Verdict")[1].split("\n")[0].replace("**", "").lstrip(": "), flush=True)
             print(f"→ {path}", flush=True)

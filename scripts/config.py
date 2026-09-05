@@ -114,7 +114,7 @@ def load_env(d=None):
     """
     def parse(f):
         kv = {}
-        for line in f.read_text().splitlines():
+        for line in f.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -452,7 +452,7 @@ def load_overrides(path=None):
     if not f.exists():
         return
     import yaml
-    data = yaml.safe_load(f.read_text()) or {}
+    data = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         raise SystemExit(f"{f}: top level should be a key: value mapping, got {type(data).__name__}")
     for k, v in data.items():
@@ -474,7 +474,7 @@ if __name__ == "__main__":
     import sys
     if "--write-example" in sys.argv:
         out = Path(__file__).resolve().parents[1] / "references" / "config.example.yaml"
-        out.write_text(render_example())
+        out.write_text(render_example(), encoding="utf-8")
         print(f"✅ regenerated {out}")
     else:
         sys.exit("usage: python3 scripts/config.py --write-example")
