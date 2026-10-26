@@ -25,15 +25,15 @@
 
 | ID | Supply | Constraints | Downstream |
 |---|---|---|---|
-| T3 | URL | semantic path, hierarchy reflects category, no ambiguous words; new URLs go through review | |
+| T3 | URL | semantic path, hierarchy reflects category, no ambiguous words; new URLs go through review. Optional: `canonical` only when the page's search credit belongs to another page, `noindex` only for pages that must stay out of search | C8 · C23 |
 | T4 | **`ymyl` verdict** | `true` if the content affects the reader's health / finances / legal standing / physical safety; **when unsure, mark `true`**. This is the only switch for the conditional items; a missed flag = all of C21 disabled | C21 |
-| T5 | title / description | title ≤60, desc ≤150, site-level formula, unique per page — no copy-paste | C11 |
+| T5 | title / description | title ≤70, desc ≤160, site-level formula, unique per page — no copy-paste | C11 |
 | T6 | one H1 line | one per page, same topic as the title (wording may differ) | C17 |
 | T7 | H2/H3 outline | **delivered structured in the SEO appendix (`outline`), not mixed into the body**; levels never skip; guide / FAQ content: questions verbatim, conclusion first in each section | C17 · content-shape requirements of C7/C12 |
 | T14 | image alt copy | **keyed by image filename** (`images[].file` + `alt`, not "figure 1 / figure 2" — images get added, removed, and moved in the body, and the numbering shifts); one descriptive sentence per content image (say what's in the image, don't stack keywords); pure decoration marked "decorative" (frontend renders it as `alt=""`) | C18 |
 | T8 | language config and bilingual pairs | en/zh delivered together, no one-sided pages; single-language pages declare en only / zh only explicitly | C22 |
 | T9 | OG share copy **+ share-image designation** | copy may share its source with title/desc; supply separately when differentiated; the share image **defaults to the body's lead image** — when that image doesn't work as a card (wrong size, an icon / decorative image), designate one here | C19 |
-| T10 | date_modified upkeep | update in step with substantive content changes (feeds JSON-LD and the visible label, one source). **Kept for GEO**: AI answers clearly prefer recent content, above all for rates / policy / process pages | C21 |
+| T10 | date_published + date_modified | date_published set once at first publish; date_modified updated in step with substantive content changes (feeds JSON-LD and the visible label, one source). **Kept for GEO**: AI answers clearly prefer recent content, above all for rates / policy / process pages | C21 |
 
 ## 3. Conditional (flag / content-condition triggered)
 

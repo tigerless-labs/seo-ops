@@ -271,8 +271,8 @@ DOC_BASE_URL = "https://github.com/tigerless-labs/seo-ops/blob/main/references/c
 EVIDENCE_SUMMARY_WIDTH = 20   # display-width cap for the evidence summary (goal: one line incl. the "full ↓" link); full evidence is never truncated
 
 # ── C11 title / description ──────────────────────────
-TITLE_MAX_CHARS = 60
-DESC_MAX_CHARS = 150
+TITLE_MAX_CHARS = 70
+DESC_MAX_CHARS = 160
 
 # ── C12 JSON-LD basics ───────────────────────────────
 ORG_TYPES = {"Organization", "InsuranceAgency", "LocalBusiness", "Corporation",
