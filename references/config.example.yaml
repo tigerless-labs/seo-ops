@@ -63,10 +63,10 @@ SSR_MIN_TEXT_CHARS: 500
 CACHE_DIFF_SAMPLE_SIZE: 10
 
 # C11: title length cap
-TITLE_MAX_CHARS: 60
+TITLE_MAX_CHARS: 70
 
 # C11: description length cap
-DESC_MAX_CHARS: 150
+DESC_MAX_CHARS: 160
 
 # C13: body text lower bound (thin content)
 MIN_CONTENT_CHARS: 400

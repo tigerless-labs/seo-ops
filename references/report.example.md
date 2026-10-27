@@ -27,7 +27,7 @@
 | C9 | P0 | full body served server-side: readable without executing JS (no CSR shell) | ✅ pass | 1/​1 pages pass;… [full ↓](#c9) | [C9 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C9.md) |
 | C10 | P0 | cached HTML is a public non-personalized version: nothing user-specific in it | 🔴 fail | /​(two fetches diff… [full ↓](#c10) | [C10 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C10.md) |
 | C23 | P0 | indexed pages carry no noindex: neither meta robots nor X-Robots-Tag blocks | ✅ pass | 1/​1 pages pass | [C23 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C23.md) |
-| C11 | P1 | title / description unique per page and within limits (<=60 / <=150) | 🔴 fail | /​(title 75 chars >… [full ↓](#c11) | [C11 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C11.md) |
+| C11 | P1 | title / description unique per page and within limits (<=70 / <=160) | 🔴 fail | /​(title 75 chars >… [full ↓](#c11) | [C11 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C11.md) |
 | C12 | P1 | JSON-LD: blocks parse, required fields present, no rejected types | 🔴 fail | /​(missing WebSite) | [C12 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C12.md) |
 | C13 | P1 | no soft 404s: never a 200 serving an empty or error page (retire via 301/410) | ✅ pass | 1/​1 pages pass;… [full ↓](#c13) | [C13 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C13.md) |
 | C14 | P1 | no anti-flicker script hiding the whole page (crawlers may get a blank) | ✅ pass | 1/​1 pages pass | [C14 docs](https://github.com/tigerless-labs/seo-ops/blob/main/references/checklist/references/C14.md) |
@@ -145,12 +145,12 @@ heuristic; the 90% ratio verdict awaits headless
 
 ### C11
 
-**Check**: title / description unique per page and within limits (<=60 / <=150)
+**Check**: title / description unique per page and within limits (<=70 / <=160)
 
 **Evidence** (complete, untruncated):
 
 ```
-/(title 75 chars > 60; desc 169 chars > 150)
+/(title 75 chars > 70; desc 169 chars > 160)
 ```
 
 ### C13

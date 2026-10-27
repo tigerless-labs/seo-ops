@@ -29,7 +29,7 @@
 | C10 | P0 | cached HTML is a public non-personalized version: nothing user-specific in it | two anonymous fetches of the same URL diff empty (sampled) | checker |
 | C23 | P0 | indexed pages carry no noindex: neither meta robots nor X-Robots-Tag blocks | fetch the page, check robots/googlebot meta + the `X-Robots-Tag` response header | checker |
 | C27 | P0 | valid head: only head-legal elements inside head (an invalid element ends head parsing early) | parse the head region, flag elements outside title/meta/link/script/style/base/noscript/template | checker |
-| C11 | P1 | title / description unique per page and within limits (<=60 / <=150) | sample-set comparison | checker |
+| C11 | P1 | title / description unique per page and within limits (<=70 / <=160) | sample-set comparison | checker |
 | C12 | P1 | JSON-LD: blocks parse, required fields present, no rejected types | parse ld+json (presence / syntax / base group and per-type fields / negative scan) | checker + human review |
 | C13 | P1 | no soft 404s: never a 200 serving an empty or error page (retire via 301/410) | content-length threshold + word-count threshold (thin content) + retired-entry sampling | checker |
 | C14 | P1 | no anti-flicker script hiding the whole page (crawlers may get a blank) | grep known patterns + rendered first screen non-blank | checker |

@@ -1194,7 +1194,7 @@ CHECKS = [
         ("C10", "P0", "cached HTML is a public non-personalized version: nothing user-specific in it"),
         ("C23", "P0", "indexed pages carry no noindex: neither meta robots nor X-Robots-Tag blocks"),
         ("C27", "P0", "valid head: only head-legal elements inside head (an invalid element ends head parsing early)"),
-        ("C11", "P1", "title / description unique per page and within limits (<=60 / <=150)"),
+        ("C11", "P1", "title / description unique per page and within limits (<=70 / <=160)"),
         ("C12", "P1", "JSON-LD: blocks parse, required fields present, no rejected types"),
         ("C13", "P1", "no soft 404s: never a 200 serving an empty or error page (retire via 301/410)"),   # verdict: char + word floors
         ("C14", "P1", "no anti-flicker script hiding the whole page (crawlers may get a blank)"),

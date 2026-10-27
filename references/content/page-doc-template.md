@@ -98,6 +98,10 @@ The block below is the full text of "Appendix · SEO" — copy it to the end of 
 # ---- T3 URL ----------------------------------------------------------------
 url: {{/guide/f1-to-h1b}}
 # all lowercase, hyphen-separated words, hierarchy reflects category, no dates or extensions; new URLs go through review (the one chance to change)
+canonical: {{blank = this page itself}}
+# fill only when this page is a duplicate or variant whose search credit belongs to another page: that page's full URL (C8)
+noindex: {{false}}
+# true only for a page that must stay out of search results (thank-you page, internal tool); true on a page meant to rank is a red C23
 
 # ---- T4 YMYL verdict (the master switch for the conditional items) ----------
 ymyl: {{true / false}}
@@ -107,7 +111,7 @@ ymyl: {{true / false}}
 # ---- T5 title / description (finished copy, not an outline) -----------------
 title: {{How to pick F1 student insurance | Acme}}
 description: {{Walks the school waiver requirements one by one — what insurance to buy during F1, common denial scenarios, and when to switch plans.}}
-# hard caps title <=60 / desc <=150 characters; Chinese pages in practice <=30 / <=75 chars by display width
+# hard caps title <=70 / desc <=160 characters; Chinese pages in practice <=30 / <=75 chars by display width
 # unique per page — no copy-pasting with two words changed
 
 # ---- T6 H1 -----------------------------------------------------------------
