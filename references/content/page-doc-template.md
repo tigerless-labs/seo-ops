@@ -136,22 +136,11 @@ date_modified: {{2026-08-26}}
 # change only on substantive content updates (new content / numbers changed / process changed count; typo fixes, image swaps, layout tweaks don't)
 # the visible "Updated ..." on the page and the JSON-LD dateModified share one source and one value; a mismatch is a C21 red
 
-# ---- T7 outline (the h2/h3 hierarchy plus each section's conclusion) --------
-outline:
-  - h2: {{Do F1 students have to buy health insurance?}}
-    lead: {{Most schools require it and the plan must satisfy the waiver terms; not mandated by federal law.}}
-  - h2: {{What do school waiver requirements usually check?}}
-    lead: {{Four things — annual limit, deductible, repatriation clause, coverage across the whole term.}}
-    h3:
-      - title: {{What deductible qualifies}}
-        lead: {{Most schools require ≤$500...}}
-      - title: {{Which number is the annual limit}}
-        lead: {{...}}
-  - h2: {{When can outside insurance replace the school plan?}}
-    lead: {{Every waiver term met and proof filed before the waiver deadline.}}
-# lead = the conclusion this section's first paragraph will state (one sentence of conclusion, not finished paragraph copy)
+# ---- T7 headings: marked in the body, not here ----------------------------
+# tag each heading where it stands in the original text (h2 / h3); the appendix keeps no copy of them
 # an h3 must hang under some h2; no skipping levels (no h1 → h3, no h2 → h4)
 # guide / FAQ content: h2 in the user's own words — the sentence someone would actually type into a search box
+# each section's first paragraph states its conclusion
 # FAQs go in standalone Q&A blocks (feeding FAQPage JSON-LD), question and answer written as a pair
 
 # ---- T14 image alt (keyed by image filename, not "figure 1 / figure 2") -----

@@ -17,7 +17,7 @@ The whole repo is these three pieces:
 |---|---|
 | [references/checklist/checklist.md](references/checklist/checklist.md) | The **C set** — 26 SEO/GEO structural checks, split into site-level / per indexed page / conditional. Each check has a detailed doc (criteria, common mistakes, authoritative references) at `references/checklist/references/C<N>.md` |
 | [scripts/run.py](scripts/run.py) | The **checker script** — give it a URL and it fetches like a crawler and reports against the C set. **Zero LLM, no frontend-framework dependency**: it only reads the live HTTP/HTML output, so React / Vue / Next / WordPress / plain static all test the same |
-| [references/content/content-checklist.md](references/content/content-checklist.md) | The **T set** — a supply checklist for the site's content design team: which inputs SEO needs content to provide (title/desc, H2 outline, image alt, ymyl judgment, OG copy, etc.), each annotated with the downstream C checks it feeds. Details at `references/content/references/T<N>.md` |
+| [references/content/content-checklist.md](references/content/content-checklist.md) | The **T set** — a supply checklist for the site's content design team: which inputs SEO needs content to provide (title/desc, H2/H3 headings, image alt, ymyl judgment, OG copy, etc.), each annotated with the downstream C checks it feeds. Details at `references/content/references/T<N>.md` |
 
 ---
 

@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # Pinned: ubuntu-latest moved to an image with no Python 3.9 build, and the floor is what CI must run on
+        os: [ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -89,7 +90,7 @@ jobs:
           echo "✅ smoke passed"
 
       - name: Workspace left clean (reports and keys must never enter the repo)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           # No intermediate file — the previous version used `git status | tee dirty.txt`,
           # and the dirty.txt tee created was seen by that same git status: the guard was
