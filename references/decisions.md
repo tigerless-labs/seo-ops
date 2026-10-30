@@ -16,7 +16,7 @@ Ryan · 2026-08-26 · `accepted`
 | 2026-08-25 | **Drop T11** status upkeep | Page lifecycle status lives in the content team's own registry, maintained by them via the repo team's API — not a supply item for this system |
 | 2026-08-25 | **Page-type supply retired wholesale**; T4 narrowed from "page type + ymyl" to the single `ymyl` flag | Google doesn't consume `WebPage` subtypes; page type needs content to judge every page and fails silently when missed — an input that needs daily human feeding with no downstream consumer isn't worth keeping (see the top of [C12.md](checklist/references/C12.md)) |
 | 2026-08-26 | **T10 deleted, reinstated the same day** | Kept for **GEO**: update time is a strong preference signal when AI cites; it is also a required field of C12 `Article` and the "declared ↔ visible" comparison item in the C21 human review — delete it and there is no value source |
-| 2026-10-30 | **T7 drops `lead`**; the outline is the h2/h3 hierarchy only | The opening conclusion of each section is body copy: readers and AI read the body, and no check or template consumed the appendix copy. Two hand-kept copies drifted on the first page measured; "conclusion first" stays a rule for the body (C7/C12 content shape) |
+| 2026-10-30 | **T7 leaves the appendix**: headings are tagged in the body, and the appendix keeps no `outline` (nor its `lead`) | The body is what gets built and read, and content already tags h2 / h3 / p in it; the appendix copy had no consumer and drifted from the body on the first page measured (tigerless.ai home: headings and leads both). "Conclusion first" and "no skipped levels" stay rules for the body, judged on the rendered page (C17, C7/C12 content shape) |
 
 ## 2. C checks judged but given no T (2026-08-25)
 

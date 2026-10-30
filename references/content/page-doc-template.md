@@ -136,17 +136,11 @@ date_modified: {{2026-08-26}}
 # change only on substantive content updates (new content / numbers changed / process changed count; typo fixes, image swaps, layout tweaks don't)
 # the visible "Updated ..." on the page and the JSON-LD dateModified share one source and one value; a mismatch is a C21 red
 
-# ---- T7 outline (the h2/h3 hierarchy) -------------------------------------
-outline:
-  - h2: {{Do F1 students have to buy health insurance?}}
-  - h2: {{What do school waiver requirements usually check?}}
-    h3:
-      - title: {{What deductible qualifies}}
-      - title: {{Which number is the annual limit}}
-  - h2: {{When can outside insurance replace the school plan?}}
-# each section's first paragraph states its conclusion — that sentence lives in the body, not here
+# ---- T7 headings: marked in the body, not here ----------------------------
+# tag each heading where it stands in the original text (h2 / h3); the appendix keeps no copy of them
 # an h3 must hang under some h2; no skipping levels (no h1 → h3, no h2 → h4)
 # guide / FAQ content: h2 in the user's own words — the sentence someone would actually type into a search box
+# each section's first paragraph states its conclusion
 # FAQs go in standalone Q&A blocks (feeding FAQPage JSON-LD), question and answer written as a pair
 
 # ---- T14 image alt (keyed by image filename, not "figure 1 / figure 2") -----
