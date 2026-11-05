@@ -37,6 +37,8 @@ fake crawler UAs). Sequential by default (config.FETCH_CONCURRENCY = 1); concurr
 reserved seam — redo the concurrency output-diff before enabling it.
 """
 import argparse, collections, json, re, sqlite3, sys, threading, time, traceback, unicodedata
+from decimal import Decimal, InvalidOperation
+from html import unescape
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from http.cookiejar import DefaultCookiePolicy
@@ -275,6 +277,112 @@ def norm_url(u):
     if path != "/" and path.endswith("/"):
         path = path.rstrip("/")
     return f"{p.scheme}://{p.netloc}{path}" + (f"?{p.query}" if p.query else "")
+
+# C12 section 3: declared values must be on the visible page (references/checklist/references/C12.md)
+UNSEEN_MARKUP = re.compile(r"<(script|style|noscript|template)\b.*?</\1\s*>|<!--.*?-->", re.S | re.I)
+TIME_DATETIME = re.compile(r"<time\b[^>]*\bdatetime\s*=\s*[\"']([^\"']+)[\"']", re.I)
+ANCHOR_HREF = re.compile(r"<a\b[^>]*\bhref\s*=\s*[\"']([^\"']+)[\"']", re.I)
+NUMBER = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")
+PRODUCT_TYPES = {"Product", "InsuranceProduct"}
+
+def _types_of(node):
+    t = node.get("@type")
+    return [t] if isinstance(t, str) else [x for x in t or [] if isinstance(x, str)]
+
+def _one(v):
+    return v[0] if isinstance(v, list) and v else v
+
+def _name(v):
+    v = _one(v)
+    if isinstance(v, dict):
+        v = v.get("name")
+    return str(v) if v not in (None, "", []) else None
+
+def _node_with(nodes, key):
+    return next((n for n in nodes if n.get(key) not in (None, "", [], {})), None)
+
+def _person(nodes, key):
+    """The first node carrying `key`; an {"@id"} reference resolves to the node with that @id."""
+    node = _node_with(nodes, key)
+    if node is None:
+        return None, None
+    person = _one(node[key])
+    if isinstance(person, dict) and "name" not in person and person.get("@id"):
+        person = next((n for n in nodes if str(n.get("@id")) == str(person["@id"])), person)
+    title = person.get("jobTitle") if isinstance(person, dict) else None
+    return _name(person), (str(title) if title not in (None, "") else None)
+
+def _folded(t):
+    """Visible-text comparison form: entities decoded, NFKC (full-width ? equals ?), whitespace collapsed, case ignored."""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", unescape(t))).strip().casefold()
+
+def _calendar_day(v):
+    m = re.match(r"\d{4}-\d{2}-\d{2}", v.strip())
+    return m.group(0) if m else None
+
+def _instant(v):
+    try:
+        d = datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return d if d.tzinfo is not None else None
+
+def _same_day(declared, shown):
+    day = _calendar_day(declared)
+    if day is not None and day == _calendar_day(shown):
+        return True
+    a, b = _instant(declared), _instant(shown)
+    return a is not None and a == b
+
+def _shows_number(text, declared):
+    try:
+        wanted = Decimal(declared.replace(",", ""))
+    except InvalidOperation:
+        return _folded(declared) in text
+    return any(Decimal(tok.replace(",", "")) == wanted for tok in NUMBER.findall(text) if tok.replace(",", ""))
+
+def declared_not_visible(nodes, html, base_url):
+    """Each declared value missing from the <body>'s visible text is one problem. Undeclared values aren't compared."""
+    m = re.search(r"<body\b[^>]*>(.*)</body\s*>", html, flags=re.S | re.I)
+    body = UNSEEN_MARKUP.sub("", m.group(1) if m else re.sub(r"<head\b.*?</head\s*>", "", html, flags=re.S | re.I))
+    text = _folded(re.sub(r"<[^>]+>", " ", body))
+    probs = []
+    for role in ("author", "reviewedBy"):
+        name, title = _person(nodes, role)
+        for label, value in (("", name), ("jobTitle ", title)):
+            if value and _folded(value) not in text:
+                probs.append(f'{role} {label}"{value}" not visible on the page')
+    node = _node_with(nodes, "citation")
+    cited = [] if node is None else node["citation"] if isinstance(node["citation"], list) else [node["citation"]]
+    linked = {norm_url(urljoin(base_url, unescape(h))) for h in ANCHOR_HREF.findall(body)}
+    for c in cited:
+        if isinstance(c, dict):
+            c = c.get("url") or c.get("@id") or c.get("name")
+        if c in (None, ""):
+            continue
+        c = str(c)
+        if urlparse(c).scheme in ("http", "https") or c.startswith("/"):
+            if norm_url(urljoin(base_url, c)) not in linked:
+                probs.append(f"citation {c} not linked on the page")
+        elif _folded(c) not in text:
+            probs.append(f'citation "{c}" not visible on the page')
+    node = _node_with(nodes, "dateModified")
+    if node is not None:
+        modified = str(node["dateModified"])
+        if not any(_same_day(modified, unescape(v)) for v in TIME_DATETIME.findall(body)):
+            probs.append(f"dateModified {modified} not in a <time datetime> on the page")
+    product = next((n for n in nodes if PRODUCT_TYPES & set(_types_of(n))), None)
+    offer = _one(product.get("offers")) if product else None
+    price = offer.get("price") if isinstance(offer, dict) else None
+    if price not in (None, "") and not _shows_number(text, str(price)):
+        probs.append(f"Offer.price {price} not visible on the page")
+    for faq in (n for n in nodes if "FAQPage" in _types_of(n)):
+        entries = faq.get("mainEntity")
+        for q in entries if isinstance(entries, list) else [entries]:
+            name = _name(q) if isinstance(q, dict) and "Question" in _types_of(q) else None
+            if name and _folded(name) not in text:
+                probs.append(f'FAQ question "{name}" not visible on the page')
+    return probs
 
 def headings(html):
     return [int(m.group(1)) for m in re.finditer(r"<h([1-6])[\s>]", html, flags=re.I)]
@@ -729,7 +837,7 @@ def check_site(site, f, args):
         prev = R.rows["C11"]
         R.set("C11", FAIL, prev[1] + dup)
 
-    # C12 JSON-LD basics (types + base-group required fields) + negative scan
+    # C12 JSON-LD basics (types + base-group required fields) + negative scan + declared values visible
     def typed_nodes(blocks):
         nodes = []
         def walk(n):
@@ -786,6 +894,7 @@ def check_site(site, f, args):
                         missing = [fld for fld in req if not n.get(fld)]
                         if missing:
                             probs.append(f"{t} missing fields: {','.join(missing)}")
+        probs += declared_not_visible(typed_nodes(blocks), p["html"], p["fetch"]["final_url"])
         st.append((p["url"], FAIL if probs else PASS, sorted(set(probs))))
     agg_pages(R, "C12", st)
     if rejected_hit:
@@ -1195,7 +1304,7 @@ CHECKS = [
         ("C23", "P0", "indexed pages carry no noindex: neither meta robots nor X-Robots-Tag blocks"),
         ("C27", "P0", "valid head: only head-legal elements inside head (an invalid element ends head parsing early)"),
         ("C11", "P1", "title / description unique per page and within limits (<=70 / <=160)"),
-        ("C12", "P1", "JSON-LD: blocks parse, required fields present, no rejected types"),
+        ("C12", "P1", "JSON-LD: blocks parse, required fields present, no rejected types, declared values visible"),
         ("C13", "P1", "no soft 404s: never a 200 serving an empty or error page (retire via 301/410)"),   # verdict: char + word floors
         ("C14", "P1", "no anti-flicker script hiding the whole page (crawlers may get a blank)"),
         ("C16", "P1", "snippet controls: max-snippet:-1 + max-image-preview:large"),
