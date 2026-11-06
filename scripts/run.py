@@ -40,7 +40,7 @@ import argparse, collections, json, re, sqlite3, sys, threading, time, traceback
 from decimal import Decimal, InvalidOperation
 from html import unescape
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from http.cookiejar import DefaultCookiePolicy
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
@@ -284,6 +284,8 @@ TIME_DATETIME = re.compile(r"<time\b[^>]*\bdatetime\s*=\s*[\"']([^\"']+)[\"']", 
 ANCHOR_HREF = re.compile(r"<a\b[^>]*\bhref\s*=\s*[\"']([^\"']+)[\"']", re.I)
 NUMBER = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")
 PRODUCT_TYPES = {"Product", "InsuranceProduct"}
+MONTHS = ("january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
+UTC_OFFSET_RANGE = (timedelta(hours=-12), timedelta(hours=14))   # every real time zone a site may print the day in
 
 def _types_of(node):
     t = node.get("@type")
@@ -318,7 +320,10 @@ def _folded(t):
 
 def _calendar_day(v):
     m = re.match(r"\d{4}-\d{2}-\d{2}", v.strip())
-    return m.group(0) if m else None
+    try:
+        return date.fromisoformat(m.group(0)) if m else None
+    except ValueError:
+        return None
 
 def _instant(v):
     try:
@@ -327,12 +332,29 @@ def _instant(v):
         return None
     return d if d.tzinfo is not None else None
 
-def _same_day(declared, shown):
+def _declared_days(declared):
+    """The declared calendar day as written, plus every day the instant falls on in some time zone."""
     day = _calendar_day(declared)
-    if day is not None and day == _calendar_day(shown):
+    days = {day} if day else set()
+    instant = _instant(declared)
+    if instant is not None:
+        first, last = ((instant.astimezone(timezone.utc) + o).date() for o in UTC_OFFSET_RANGE)
+        days |= {first + timedelta(days=n) for n in range((last - first).days + 1)}
+    return days
+
+def _written_day(day):
+    """One day as a page writes it: ISO / Y-M-D with / or ., M/D/Y, English month names, Chinese."""
+    month, num, year = MONTHS[day.month - 1], rf"0?{day.day}", str(day.year)
+    name = rf"{month[:3]}[a-z]*\.?"
+    forms = (rf"{year}[-/.]0?{day.month}[-/.]{num}", rf"0?{day.month}/{num}/{year}",
+             rf"{name}\s+{num}(?:st|nd|rd|th)?,?\s+{year}", rf"{num}(?:st|nd|rd|th)?\s+{name},?\s+{year}",
+             rf"{year}\s*年\s*0?{day.month}\s*月\s*{num}\s*日")
+    return rf"(?<!\d)(?:{'|'.join(forms)})(?!\d)"
+
+def _shows_day(text, body, days):
+    if any(_calendar_day(unescape(v)) in days for v in TIME_DATETIME.findall(body)):
         return True
-    a, b = _instant(declared), _instant(shown)
-    return a is not None and a == b
+    return any(re.search(_written_day(d), text) for d in days)
 
 def _shows_number(text, declared):
     try:
@@ -369,8 +391,8 @@ def declared_not_visible(nodes, html, base_url):
     node = _node_with(nodes, "dateModified")
     if node is not None:
         modified = str(node["dateModified"])
-        if not any(_same_day(modified, unescape(v)) for v in TIME_DATETIME.findall(body)):
-            probs.append(f"dateModified {modified} not in a <time datetime> on the page")
+        if not _shows_day(text, body, _declared_days(modified)):
+            probs.append(f"dateModified {modified} not shown on the page")
     product = next((n for n in nodes if PRODUCT_TYPES & set(_types_of(n))), None)
     offer = _one(product.get("offers")) if product else None
     price = offer.get("price") if isinstance(offer, dict) else None
