@@ -826,8 +826,11 @@ def check_site(site, f, args):
     else:
         st = []
         for p in ok_pages:
-            cc = p["fetch"]["headers"].get("Cache-Control", "")
-            ok = "s-maxage" in cc
+            # Header names and directive names are case-insensitive (RFC 9110 §5.1,
+            # RFC 9111 §5.2.2.3) — fold both before looking.
+            hdrs = {k.lower(): v for k, v in p["fetch"]["headers"].items()}
+            cc = hdrs.get("cache-control", "")
+            ok = "s-maxage" in cc.lower()
             st.append((p["url"], PASS if ok else FAIL,
                        f"Cache-Control: {cc or '(none)'}"))
         agg_pages(R, "C15", st)
